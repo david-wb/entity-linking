@@ -1,0 +1,14 @@
+name: enli
+channels:
+  - conda-forge
+  - pytorch
+  - defaults
+dependencies:
+  - matplotlib
+  - numpy
+  - pip
+  - python=3.7.8
+  - scipy
+  - pillow
+  - pytorch==1.7.1
+
