@@ -11,4 +11,6 @@ dependencies:
   - scipy
   - pillow
   - pytorch==1.7.1
+  - jupyter
+  - transformers==4.3.0
 
