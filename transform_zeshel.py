@@ -11,6 +11,8 @@ def transform_mentions(split: str, corpus_dict: Dict):
     mentions = [json.loads(line) for line in lines]
     for men in mentions:
         men['source_document'] = corpus_dict[men['corpus']][men['context_document_id']]
+        men['label_document'] = corpus_dict[men['corpus']][men['label_document_id']]
+
     mentions_dict = {m['mention_id']: m for m in mentions}
 
     mentions_file = os.path.join(dir_path, f'zeshel_transformed/mentions_{split}.json')
