@@ -3,9 +3,8 @@ import json
 import os
 from typing import List, Dict, Any
 
-import torch
 from torch.utils.data import Dataset
-from transformers import DistilBertTokenizer, DistilBertModel
+from transformers import DistilBertTokenizer
 
 
 class ZeshelDataset(Dataset):
@@ -43,41 +42,58 @@ class ZeshelDataset(Dataset):
         left_words = words[window_start:start_i]
         right_words = words[end_i + 1: end_i + self.context_size]
 
-        window = left_words + ['[SEP]'] + mention_words + ['[SEP]'] + right_words
-        while len(window) < 2 * self.context_size + 12:
-            window.append('[PAD]')
+        text = ' '.join(left_words) + ' # ' + ' '.join(mention_words) + ' # ' + ' '.join(right_words)
+        # left_tokens = self.tokenizer.tokenize(' '.join(left_words))
+        # right_tokens = self.tokenizer.tokenize(' '.join(right_words))
+        # mention_tokens = self.tokenizer.tokenize(' '.join(mention_words))
+        #
+        # tokens = ['[CLS]'] + left_tokens + ['[SEP]'] + right_tokens + ['[SEP]'] + mention_tokens
+        # while len(tokens) < 2 * self.context_size + 12:
+        #     tokens.append('[PAD]')
+        #
+        # assert len(tokens) == 2 * self.context_size + 12
 
-        assert len(window) == 2 * self.context_size + 12
+        tokens = self.tokenizer(text=text, return_tensors='pt', truncation=True)
 
-        window_text = ' '.join(window)
-        mention_tokens = self.tokenizer.tokenize(window_text)
-        return mention_tokens
+        return tokens
 
     def _get_entity_tokens(self, mention: Dict[str, Any]) -> List[str]:
         title = mention['label_document']['title']
         text = mention['label_document']['text']
 
-        title_words = title.split()[:9]
-        while len(title_words) < 9:
-            title_words.append('[PAD]')
+        # title_tokens = self.tokenizer.tokenize(title)[:9]
+        # text_tokens = self.tokenizer.tokenize(text)[:99]
+        #
+        # tokens = ['[CLS]'] + title_tokens + ['[SEP]'] + text_tokens  # max len is 110
+        # while len(tokens) < 110:
+        #     tokens.append('[PAD]')
 
-        words = title_words + ['[SEP]'] + text.split()[:100]  # max len is 110
-        while len(words) < 110:
-            words.append('[PAD]')
+        tokens = self.tokenizer(text=title + ' | ' + text, return_tensors='pt', truncation=True)
 
-        assert len(words) == 110
-
-        entity_text = ' '.join(words).strip()
-        entity_tokens = self.tokenizer.tokenize(entity_text)
-        return entity_tokens
+        #assert len(tokens) == 110
+        return tokens
 
     def __getitem__(self, idx):
         mention = copy.deepcopy(self.mentions[idx])
-        mention['mention_tokens'] = self._get_mention_tokens(mention)
-        mention['entity_tokens'] = self._get_entity_tokens(mention)
 
-        print(mention['mention_tokens'])
-        print(mention['entity_tokens'])
+        # mention['mention_tokens'] = self._get_mention_tokens(mention)
+        # mention['mention_ids'] = self.tokenizer.convert_tokens_to_ids(mention['mention_tokens'])
+        #
+        # mention['entity_tokens'] = self._get_entity_tokens(mention)
+        # mention['entity_ids'] = self.tokenizer.convert_tokens_to_ids(mention['entity_tokens'])
+        #
+        # print(mention['mention_tokens'])
+        # print(mention['mention_ids'])
+        #
+        # print(mention['entity_tokens'])
+        # print(mention['entity_ids'])
 
-        return mention
+        mention_inputs = self._get_mention_tokens(mention)
+        entity_inputs = self._get_entity_tokens(mention)
+        print(mention_inputs)
+        return {
+            'mention_inputs': mention_inputs,
+            'entity_inputs': entity_inputs,
+            'negative_entity_inputs': entity_inputs
+        }
 
