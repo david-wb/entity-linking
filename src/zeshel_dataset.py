@@ -1,6 +1,7 @@
 import copy
 import json
 import os
+from numpy.random import randint
 from typing import List, Dict, Any
 
 from torch.utils.data import Dataset
@@ -29,6 +30,12 @@ class ZeshelDataset(Dataset):
 
     def __len__(self):
         return len(self.mentions)
+
+    def _get_negative_sample(self, idx) -> Dict:
+        ni = idx
+        while ni == idx:
+            ni = randint(0, self.__len__())
+        return self.mentions[ni]
 
     def _get_mention_tokens(self, mention: Dict[str, Any]):
         start_i = mention['start_index']
@@ -75,25 +82,17 @@ class ZeshelDataset(Dataset):
 
     def __getitem__(self, idx):
         mention = copy.deepcopy(self.mentions[idx])
+        negative_sample = self._get_negative_sample(idx)
 
-        # mention['mention_tokens'] = self._get_mention_tokens(mention)
-        # mention['mention_ids'] = self.tokenizer.convert_tokens_to_ids(mention['mention_tokens'])
-        #
-        # mention['entity_tokens'] = self._get_entity_tokens(mention)
-        # mention['entity_ids'] = self.tokenizer.convert_tokens_to_ids(mention['entity_tokens'])
-        #
-        # print(mention['mention_tokens'])
-        # print(mention['mention_ids'])
-        #
-        # print(mention['entity_tokens'])
-        # print(mention['entity_ids'])
+        assert mention['text'] != negative_sample['text']
 
         mention_inputs = self._get_mention_tokens(mention)
         entity_inputs = self._get_entity_tokens(mention)
-        print(mention_inputs)
+        negative_entity_inputs = self._get_entity_tokens(negative_sample)
+
         return {
             'mention_inputs': mention_inputs,
             'entity_inputs': entity_inputs,
-            'negative_entity_inputs': entity_inputs
+            'negative_entity_inputs': negative_entity_inputs
         }
 
