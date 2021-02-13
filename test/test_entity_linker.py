@@ -1,10 +1,9 @@
 import os
 from unittest import TestCase
 
-import torch
-
 from src.entity_linker_model import EntityLinker
 from src.zeshel_dataset import ZeshelDataset
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 

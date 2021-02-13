@@ -1,9 +1,9 @@
 import copy
 import json
 import os
-from numpy.random import randint
 from typing import List, Dict, Any
 
+from numpy.random import randint
 from torch.utils.data import Dataset
 from transformers import DistilBertTokenizer
 
@@ -50,15 +50,6 @@ class ZeshelDataset(Dataset):
         right_words = words[end_i + 1: end_i + self.context_size]
 
         text = ' '.join(left_words) + ' # ' + ' '.join(mention_words) + ' # ' + ' '.join(right_words)
-        # left_tokens = self.tokenizer.tokenize(' '.join(left_words))
-        # right_tokens = self.tokenizer.tokenize(' '.join(right_words))
-        # mention_tokens = self.tokenizer.tokenize(' '.join(mention_words))
-        #
-        # tokens = ['[CLS]'] + left_tokens + ['[SEP]'] + right_tokens + ['[SEP]'] + mention_tokens
-        # while len(tokens) < 2 * self.context_size + 12:
-        #     tokens.append('[PAD]')
-        #
-        # assert len(tokens) == 2 * self.context_size + 12
 
         tokens = self.tokenizer(text=text, return_tensors='pt', truncation=True)
 
@@ -68,16 +59,8 @@ class ZeshelDataset(Dataset):
         title = mention['label_document']['title']
         text = mention['label_document']['text']
 
-        # title_tokens = self.tokenizer.tokenize(title)[:9]
-        # text_tokens = self.tokenizer.tokenize(text)[:99]
-        #
-        # tokens = ['[CLS]'] + title_tokens + ['[SEP]'] + text_tokens  # max len is 110
-        # while len(tokens) < 110:
-        #     tokens.append('[PAD]')
-
         tokens = self.tokenizer(text=title + ' | ' + text, return_tensors='pt', truncation=True)
 
-        #assert len(tokens) == 110
         return tokens
 
     def __getitem__(self, idx):

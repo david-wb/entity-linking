@@ -1,6 +1,8 @@
 import os
 from unittest import TestCase
+
 from src.zeshel_dataset import ZeshelDataset
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -10,4 +12,3 @@ class TestZeshelDataset(TestCase):
 
     def test_len(self):
         self.assertEqual(len(self.dataset), 3)
-        self.assertEqual(self.dataset[0]['text'], 'Blink')
