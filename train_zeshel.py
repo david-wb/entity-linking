@@ -9,11 +9,12 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 
 
 def validate(model, valloader):
-    total_loss = 0
-    for batch in valloader:
-        me, ee, loss = model(**batch)
-        total_loss += loss.item()
-    print('Validation loss', total_loss)
+    with torch.no_grad():
+        total_loss = 0
+        for batch in valloader:
+            me, ee, loss = model(**batch)
+            total_loss += loss.item()
+        print('Validation loss', total_loss)
 
 
 def main():
@@ -31,9 +32,9 @@ def main():
 
         model.zero_grad()
         me, ee, loss = model(**batch)
-        print(loss.item())
         loss.backward()
         optimizer.step()
+        print(loss.item())
 
         if i % 10 == 0:
             validate(model, valloader)
