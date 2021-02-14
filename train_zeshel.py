@@ -20,9 +20,9 @@ def main():
     model = BiEncoder()
     trainset = ZeshelDataset(os.path.join(dir_path, 'zeshel_transformed'), split='train')
     valset = ZeshelDataset(os.path.join(dir_path, 'zeshel_transformed'), split='val')
-    valset = [valset[i] for i in range(10)]
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=2, shuffle=True, num_workers=2)
-    valloader = torch.utils.data.DataLoader(valset, batch_size=2, shuffle=True, num_workers=2)
+    valset = [valset[i] for i in range(30)]
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, shuffle=True, num_workers=2)
+    valloader = torch.utils.data.DataLoader(valset, batch_size=4, shuffle=True, num_workers=2)
 
     learning_rate = 1e-4
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
