@@ -51,17 +51,16 @@ class ZeshelDataset(Dataset):
 
         text = ' '.join(left_words) + ' # ' + ' '.join(mention_words) + ' # ' + ' '.join(right_words)
 
-        tokens = self.tokenizer(text=text, return_tensors='pt', truncation=True)
+        tokens = self.tokenizer(text=text, return_tensors='pt', truncation=True, padding='max_length')
 
-        return tokens
+        return {k: v.squeeze(0) for k, v in tokens.items()}
 
     def _get_entity_tokens(self, mention: Dict[str, Any]) -> List[str]:
         title = mention['label_document']['title']
         text = mention['label_document']['text']
 
-        tokens = self.tokenizer(text=title + ' | ' + text, return_tensors='pt', truncation=True)
-
-        return tokens
+        tokens = self.tokenizer(text=title + ' | ' + text, return_tensors='pt', truncation=True, padding='max_length')
+        return {k: v.squeeze(0) for k, v in tokens.items()}
 
     def __getitem__(self, idx):
         mention = copy.deepcopy(self.mentions[idx])

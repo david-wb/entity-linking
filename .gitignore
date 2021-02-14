@@ -3,3 +3,4 @@ zeshel_transformed/
 *.tar.bz2
 .idea/
 .ipynb_checkpoints/
+__pycache__/
