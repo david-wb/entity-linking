@@ -11,7 +11,7 @@ from transformers import DistilBertTokenizer
 class ZeshelDataset(Dataset):
     """Zero-Shot Entity Linking Dataset"""
 
-    def __init__(self, zeshel_home: str, split: str, context_size=10, transform=None):
+    def __init__(self, zeshel_home: str, split: str, context_size=10, transform=None, device='cpu'):
         """
         Args:
             zeshel_home (string): Path to folder containing the transformed Zeshel data.
@@ -21,7 +21,7 @@ class ZeshelDataset(Dataset):
         self.zeshel_home = zeshel_home
         self.transform = transform
         self.context_size = context_size
-
+        self.device = device
         zeshel_file = os.path.join(zeshel_home, f'mentions_{split}.json')
         self.tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
 
@@ -53,14 +53,16 @@ class ZeshelDataset(Dataset):
 
         tokens = self.tokenizer(text=text, return_tensors='pt', truncation=True, padding='max_length')
 
-        return {k: v.squeeze(0) for k, v in tokens.items()}
+        tokens = {k: v.squeeze(0)for k, v in tokens.items()}
+        return tokens
 
-    def _get_entity_tokens(self, mention: Dict[str, Any]) -> List[str]:
+    def _get_entity_tokens(self, mention: Dict[str, Any]) -> Dict:
         title = mention['label_document']['title']
         text = mention['label_document']['text']
 
         tokens = self.tokenizer(text=title + ' | ' + text, return_tensors='pt', truncation=True, padding='max_length')
-        return {k: v.squeeze(0) for k, v in tokens.items()}
+        tokens = {k: v.squeeze(0) for k, v in tokens.items()}
+        return tokens
 
     def __getitem__(self, idx):
         mention = copy.deepcopy(self.mentions[idx])

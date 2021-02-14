@@ -1,7 +1,7 @@
 name: enli
 channels:
-  - conda-forge
   - pytorch
+  - conda-forge
   - defaults
 dependencies:
   - matplotlib
@@ -13,4 +13,6 @@ dependencies:
   - pytorch==1.7.1
   - jupyter
   - transformers==4.3.0
-
+  - cudatoolkit=11.0
+  - torchvision
+  - torchaudio
