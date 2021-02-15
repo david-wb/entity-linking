@@ -4,3 +4,4 @@ zeshel_transformed/
 .idea/
 .ipynb_checkpoints/
 __pycache__/
+lightning_logs/

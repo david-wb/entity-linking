@@ -13,6 +13,6 @@ dependencies:
   - pytorch==1.7.1
   - jupyter
   - transformers==4.3.0
-  - cudatoolkit=11.0
   - torchvision
   - torchaudio
+  - pytorch-lightning

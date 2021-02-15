@@ -4,6 +4,8 @@ import torch
 
 from src.bi_encoder import BiEncoder
 from src.zeshel_dataset import ZeshelDataset
+import pytorch_lightning as pl
+from torch.utils.data import random_split, DataLoader
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -24,26 +26,30 @@ def main():
     device = 'cpu'  # torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
     model = BiEncoder(device=device)
+    model.train()
     model.to(device)
-
     trainset = ZeshelDataset(os.path.join(dir_path, 'zeshel_transformed'), split='train', device=device)
     valset = ZeshelDataset(os.path.join(dir_path, 'zeshel_transformed'), split='val', device=device)
     valset = [valset[i] for i in range(100)]
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, shuffle=True, num_workers=2)
-    valloader = torch.utils.data.DataLoader(valset, batch_size=4, shuffle=True, num_workers=2)
+    trainloader = DataLoader(trainset, batch_size=4, num_workers=12)
+    valloader = torch.utils.data.DataLoader(valset, batch_size=4, num_workers=12)
 
-    learning_rate = 1e-4
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    trainer = pl.Trainer(val_check_interval=10, log_every_n_steps=5)
+    trainer.fit(model, trainloader, valloader)
 
-    for i, batch in enumerate(trainloader):
-        model.zero_grad()
-        me, ee, loss = model(**batch)
-        loss.backward()
-        optimizer.step()
-        print(loss.item())
-
-        if i % 10 == 0:
-            validate(model, valloader)
+    # learning_rate = 1e-4
+    # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    #
+    # for i, batch in enumerate(trainloader):
+    #     model.zero_grad()
+    #     me, ee, loss = model(**batch)
+    #     loss.backward()
+    #     optimizer.step()
+    #     print(loss.item())
+    #
+    #     if i % 10 == 0:
+    #         validate(model, valloader)
+    #
 
 
 if __name__ == '__main__':
