@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from transformers import DistilBertModel, AdamW
+from transformers import BertModel, AdamW
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
@@ -10,13 +10,12 @@ class BiEncoder(pl.LightningModule):
         super(BiEncoder, self).__init__()
 
         # Mention embedder
-        self.mention_embedder = DistilBertModel.from_pretrained('distilbert-base-uncased')
-        self.fc_me = nn.Linear(768, 64)
+        self.mention_embedder = BertModel.from_pretrained('bert-base-uncased')
+        self.fc_me = nn.Linear(768, 128)
 
         # Entity embedder
-        self.entity_embedder = DistilBertModel.from_pretrained('distilbert-base-uncased')
-        self.fc_ee = nn.Linear(768, 64)
-        self.cosine_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+        self.entity_embedder = BertModel.from_pretrained('bert-base-uncased')
+        self.fc_ee = nn.Linear(768, 128)
 
     # x represents our data
     def forward(self, mention_inputs, entity_inputs=None, negative_entity_inputs=None):
@@ -63,7 +62,6 @@ class BiEncoder(pl.LightningModule):
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         self.log('val_loss', avg_loss, prog_bar=True)
-        return {'val_loss': avg_loss}
 
     def configure_optimizers(self):
         optimizer = AdamW(self.parameters(), lr=5e-5)
