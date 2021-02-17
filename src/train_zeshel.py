@@ -66,7 +66,7 @@ def train(work_dir: str, data_dir: str):
     trainloader = DataLoader(trainset, batch_size=4, num_workers=12)
     valloader = torch.utils.data.DataLoader(valset, batch_size=4, num_workers=12)
 
-    trainer = pl.Trainer(val_check_interval=100, accumulate_grad_batches=32, log_every_n_steps=1)
+    trainer = pl.Trainer(gpus=-1, val_check_interval=100, accumulate_grad_batches=32, log_every_n_steps=1)
     trainer.fit(model, trainloader, valloader)
 
 
