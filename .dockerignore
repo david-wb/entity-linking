@@ -1,0 +1,8 @@
+local
+venv
+lightning_logs/
+zeshel/
+zeshel_transformed/
+*.tar.bz2
+lightning_logs/
+transformed_zeshel/

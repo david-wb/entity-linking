@@ -1,4 +1,3 @@
-import copy
 import json
 import os
 from typing import List, Dict, Any
@@ -6,7 +5,7 @@ from typing import List, Dict, Any
 import torch
 from numpy.random import randint
 from torch.utils.data import Dataset
-from transformers import BertTokenizer, BertTokenizer, PreTrainedTokenizer
+from transformers import PreTrainedTokenizer
 
 from src.constants import MENTION_START_TAG, MENTION_END_TAG
 
@@ -105,9 +104,6 @@ class ZeshelDataset(Dataset):
 
     def __getitem__(self, idx):
         mention = self.mentions[idx]
-        negative_sample = self._get_negative_sample(idx)
-
-        assert mention['text'] != negative_sample['text']
 
         mention_inputs = self._get_mention_tokens(mention)
         entity_inputs = self._get_entity_tokens(mention)
