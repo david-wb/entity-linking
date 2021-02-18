@@ -23,5 +23,5 @@ tar -xvf zeshel.tar.bz2
 ## Transform the Data
 This step will require at least 20gb of memory.
 ```python
-python transform_zeshel.py
+python -m src.transform_zeshel --input-dir="./zeshel"
 ```

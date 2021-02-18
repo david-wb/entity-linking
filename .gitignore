@@ -1,6 +1,8 @@
 zeshel/
 zeshel_transformed/
+transformed_zeshel/
 *.tar.bz2
 .idea/
 .ipynb_checkpoints/
 __pycache__/
+lightning_logs/

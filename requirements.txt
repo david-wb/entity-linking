@@ -1,0 +1,6 @@
+torch==1.6.0
+transformers==4.3.0
+numpy==1.19.4
+bavard-ml-common==0.0.15
+loguru==0.5.3
+pytorch-lightning==1.1.8
