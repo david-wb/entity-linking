@@ -17,6 +17,14 @@ class BiEncoder(pl.LightningModule):
         self.entity_embedder = BertModel.from_pretrained('bert-base-uncased')
         self.fc_ee = nn.Linear(768, 128)
 
+    def get_entity_embedding(self, entity_inputs):
+        entity_inputs = {k: v.to(self.device) for k, v in entity_inputs.items()}
+        ee = self.entity_embedder(**entity_inputs).last_hidden_state[:, 0]
+        ee = self.fc_ee(ee)
+        ee_norm = ee.norm(p=2, dim=1, keepdim=True)
+        ee = ee.div(ee_norm)
+        return ee
+
     # x represents our data
     def forward(self, mention_inputs, entity_inputs=None, negative_entity_inputs=None):
         mention_inputs = {k: v.to(self.device) for k,v in mention_inputs.items()}

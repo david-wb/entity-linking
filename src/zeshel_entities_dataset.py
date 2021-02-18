@@ -53,7 +53,5 @@ class ZeshelEntitiesDataset(Dataset):
     def __getitem__(self, idx):
         entity = self.entities[idx]
         entity_inputs = self._get_entity_tokens(entity)
-        return {
-            'entity_inputs': entity_inputs,
-        }
+        return entity_inputs
 
