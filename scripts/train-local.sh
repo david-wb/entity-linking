@@ -16,6 +16,5 @@ export DEVICE='cpu'
 
 python -m src.train_zeshel \
   --job-dir "gs://${bucket}/${model_dir}" \
-  --data-file "gs://${bucket}/${data_file}" \
-  --gcp-project-id "$project_id"
+  --data-file "gs://${bucket}/${data_file}"
 

@@ -9,6 +9,7 @@ import pytorch_lightning as pl
 import torch
 from bavard_ml_common.mlops.gcs import GCSClient
 from loguru import logger
+from pytorch_lightning.loggers import CometLogger, WandbLogger
 from torch.utils.data import DataLoader
 from transformers import BertTokenizer
 
@@ -65,7 +66,8 @@ def train(work_dir: str, data_dir: str):
     trainloader = DataLoader(trainset, batch_size=4, num_workers=12)
     valloader = torch.utils.data.DataLoader(valset, batch_size=4, num_workers=12)
 
-    trainer = pl.Trainer(gpus=-1, val_check_interval=100, accumulate_grad_batches=32, log_every_n_steps=1)
+    wandb_logger = WandbLogger(project='entity-linker')
+    trainer = pl.Trainer(gpus=-1, logger=[wandb_logger], val_check_interval=100, accumulate_grad_batches=32, log_every_n_steps=1)
     trainer.fit(model, trainloader, valloader)
 
 
@@ -104,7 +106,7 @@ def main():
 
     # Save
     if GCSClient.is_gcs_uri(args.job_dir):
-        logsdir = os.path.join(work_dir, 'lightning_logs')
+        logsdir = os.path.join(work_dir, 'logs')
         GCSClient().upload_dir(logsdir, args.job_dir)
         # Clean up the intermediate copy.
 

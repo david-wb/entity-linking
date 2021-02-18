@@ -13,5 +13,5 @@ RUN apt-get update -y \
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-
+RUN wandb login 22e8bd21b54e97ed931e461f2eb039e08a7f01f2
 COPY ./src ./src

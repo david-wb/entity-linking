@@ -6,3 +6,4 @@ transformed_zeshel/
 .ipynb_checkpoints/
 __pycache__/
 lightning_logs/
+logs/

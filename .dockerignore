@@ -6,3 +6,4 @@ zeshel_transformed/
 *.tar.bz2
 lightning_logs/
 transformed_zeshel/
+logs/
