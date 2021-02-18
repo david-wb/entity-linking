@@ -3,7 +3,7 @@
 set -eo pipefail
 
 project_id="bavard-test-293219"
-job_name=entity_linker_1
+job_name="entity_linker_$(date +%m%d%H%M%S)"
 region="us-central1"
 image="gcr.io/${project_id}/entity-linker-training:1.0.0"
 
