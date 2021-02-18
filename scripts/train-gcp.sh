@@ -3,8 +3,7 @@
 set -eo pipefail
 
 project_id="bavard-test-293219"
-short_commit_sha=$(echo "$CIRCLE_SHA1" | cut -c -7)
-job_name=entity_linker_${short_commit_sha}
+job_name=entity_linker_1
 region="us-central1"
 image="gcr.io/${project_id}/entity-linker-training:1.0.0"
 
