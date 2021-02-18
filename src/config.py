@@ -1,7 +1,7 @@
 import os
 
-from torch import cuda
 from loguru import logger
+from torch import cuda
 
 _is_cuda_available = cuda.is_available()
 logger.debug("is cuda available? {}", _is_cuda_available)

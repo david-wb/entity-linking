@@ -1,14 +1,14 @@
 import os
-import sys
 import shutil
+import sys
+import tarfile
 from argparse import ArgumentParser
 from uuid import uuid4
 
+import pytorch_lightning as pl
 import torch
 from bavard_ml_common.mlops.gcs import GCSClient
 from loguru import logger
-import tarfile
-
 from torch.utils.data import DataLoader
 from transformers import BertTokenizer
 
@@ -16,7 +16,6 @@ from src.bi_encoder import BiEncoder
 from src.config import DEVICE
 from src.transform_zeshel import transform_zeshel
 from src.zeshel_dataset import ZeshelDataset
-import pytorch_lightning as pl
 
 
 def parse_cli_args():

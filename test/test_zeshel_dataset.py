@@ -2,7 +2,6 @@ import os
 from unittest import TestCase
 
 from transformers import BertTokenizer
-from transformers.models.auto.tokenization_auto import BertTokenizerFast
 
 from src.zeshel_dataset import ZeshelDataset
 

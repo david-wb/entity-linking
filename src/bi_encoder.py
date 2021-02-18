@@ -1,8 +1,8 @@
+import pytorch_lightning as pl
 import torch
+import torch.nn.functional as F
 from torch import nn
 from transformers import BertModel, AdamW
-import torch.nn.functional as F
-import pytorch_lightning as pl
 
 
 class BiEncoder(pl.LightningModule):
