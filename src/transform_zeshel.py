@@ -21,6 +21,19 @@ def transform_mentions(input_dir: str, output_dir: str, split: str, corpus_dict:
     with open(mentions_file, 'w') as f:
         json.dump(mentions_dict, f, indent=2)
 
+    return mentions_dict
+
+
+def combine_entities(mentions: Dict, output_dir: str, split: str):
+    entities = {}
+    for men in mentions.values():
+        ent_doc = men['label_document']
+        entities[ent_doc['document_id']] = ent_doc
+
+    entities_file = os.path.join(output_dir, f'entities_{split}.json')
+    with open(entities_file, 'w') as f:
+        json.dump(entities, f, indent=2)
+
 
 def transform_zeshel(input_dir: str, output_dir: str):
     corpus_dict = {}
@@ -35,7 +48,8 @@ def transform_zeshel(input_dir: str, output_dir: str):
             corpus_dict[corpus] = {doc['document_id']: doc for doc in docs}
 
     for split in ['train', 'val', 'test']:
-        transform_mentions(input_dir, output_dir, split, corpus_dict)
+        mentions = transform_mentions(input_dir, output_dir, split, corpus_dict)
+        combine_entities(mentions, output_dir, split)
 
 
 def parse_cli_args():

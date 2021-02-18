@@ -7,3 +7,5 @@ zeshel_transformed/
 lightning_logs/
 transformed_zeshel/
 logs/
+checkpoints/
+wandb/

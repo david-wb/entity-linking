@@ -6,7 +6,7 @@ from transformers import BertModel, AdamW
 
 
 class BiEncoder(pl.LightningModule):
-    def __init__(self, device='cpu'):
+    def __init__(self):
         super(BiEncoder, self).__init__()
 
         # Mention embedder

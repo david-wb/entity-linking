@@ -1,3 +1,3 @@
 FROM entity-linker-base
 
-ENTRYPOINT ["python3", "-m", "src.train_zeshel"]
+ENTRYPOINT ["python3", "-m", "src.train_zeshel_gcp"]

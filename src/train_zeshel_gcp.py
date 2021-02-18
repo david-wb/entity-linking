@@ -9,7 +9,6 @@ import pytorch_lightning as pl
 import torch
 from bavard_ml_common.mlops.gcs import GCSClient
 from loguru import logger
-from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
 from transformers import BertTokenizer
@@ -25,7 +24,13 @@ def parse_cli_args():
 
     parser = ArgumentParser()
     parser.add_argument(
-        "--data-dir",
+        "--job-dir",
+        type=str,
+        required=True,
+        help="The directory path (local or GCS) to save the final trained model."
+    )
+    parser.add_argument(
+        "--data-file",
         type=str,
         default="test",
         help="The file path (local or GCS) to zeshel.tar.bz2."
@@ -33,7 +38,6 @@ def parse_cli_args():
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=8
     )
     parsed_args = parser.parse_args(args)
     return parsed_args
@@ -68,18 +72,12 @@ def train(work_dir: str, data_dir: str, batch_size: int):
 
     accumulate_grad_batches = min(1, 128 // batch_size)
     wandb_logger = WandbLogger(project='entity-linker')
-    checkpoint_callback = ModelCheckpoint(
-        monitor='val_loss',
-        save_top_k=1,
-        verbose=True,
-        dirpath=os.path.join(work_dir, 'checkpoints'))
     trainer = pl.Trainer(
-        gpus=-1 if DEVICE != 'cpu' else 0,
+        gpus=-1,
         logger=[wandb_logger],
-        val_check_interval=1,
+        val_check_interval=100,
         accumulate_grad_batches=accumulate_grad_batches,
-        log_every_n_steps=1,
-        callbacks=[checkpoint_callback])
+        log_every_n_steps=1)
     trainer.fit(model, trainloader, valloader)
 
 
@@ -88,14 +86,41 @@ def main():
     """
     args = parse_cli_args()
 
-    work_dir = os.getcwd()
+    work_dir = os.path.join(os.getcwd(), str(uuid4()))
+    logger.info(f"Deleting the work folder {work_dir}")
+    if os.path.exists(work_dir):
+        shutil.rmtree(work_dir)
+    os.makedirs(work_dir)
 
     # Get data
+    zeshel_dir = os.path.join(work_dir, 'zeshel')
+    if GCSClient.is_gcs_uri(args.data_file):
+        data_filename = os.path.join(work_dir, 'zeshel.tar.bz2')
+        logger.info(f"Downloading zeshel data.")
+        GCSClient().download_blob_to_filename(args.data_file, data_filename)
+    else:
+        data_filename = args.data_file
+
+    logger.info(f"Extracting zeshel data.")
+    tar = tarfile.open(data_filename, "r:bz2")
+    tar.extractall(work_dir)
+    tar.close()
+
+    logger.info(f"Transforming zeshel data.")
     zeshel_transformed_dir = os.path.join(work_dir, 'transformed_zeshel')
+    transform_zeshel(zeshel_dir, zeshel_transformed_dir)
 
     # Train
     logger.info(f"Training model.")
     train(work_dir, zeshel_transformed_dir, batch_size=args.batch_size)
+
+    # Save
+    if GCSClient.is_gcs_uri(args.job_dir):
+        logsdir = os.path.join(work_dir, 'logs')
+        GCSClient().upload_dir(logsdir, args.job_dir)
+        # Clean up the intermediate copy.
+
+    # shutil.rmtree(args.output_dir)
 
 
 def ensure_dir(file_path):
