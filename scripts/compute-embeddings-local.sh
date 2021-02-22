@@ -10,7 +10,7 @@ data_dir="transformed_zeshel"
 
 export DEVICE='cpu'
 
-python -m src.eval_zeshel \
+python -m src.compute_embeddings \
   --checkpoint-path "${checkpoint_path}" \
   --data-dir "${data_dir}"
 

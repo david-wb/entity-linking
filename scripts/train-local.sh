@@ -7,4 +7,4 @@ cd "$DIR/.."
 
 export DEVICE='cpu'
 
-python -m src.train_zeshel
+python -m src.train_zeshel_local --val-check-interval 1 --limit-train-batches=2 --batch-size=4

@@ -109,6 +109,8 @@ class ZeshelDataset(Dataset):
         entity_inputs = self._get_entity_tokens(mention)
 
         return {
+            'entity_document_ids': mention['label_document_id'],
+            'mention_document_ids': mention['context_document_id'],
             'mention_inputs': mention_inputs,
             'entity_inputs': entity_inputs,
         }

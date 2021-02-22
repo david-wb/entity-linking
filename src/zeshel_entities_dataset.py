@@ -3,11 +3,8 @@ import os
 from typing import List, Dict, Any
 
 import torch
-from numpy.random import randint
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
-
-from src.constants import MENTION_START_TAG, MENTION_END_TAG
 
 
 class ZeshelEntitiesDataset(Dataset):
@@ -20,7 +17,7 @@ class ZeshelEntitiesDataset(Dataset):
         self.tokenizer = tokenizer
 
         with open(entities_file) as f:
-            self.entities: List[Dict] = list(json.load(f).values())
+            self.entities: List[tuple] = list(json.load(f).items())
 
     def __len__(self):
         return len(self.entities)
@@ -51,7 +48,7 @@ class ZeshelEntitiesDataset(Dataset):
         return inputs
 
     def __getitem__(self, idx):
-        entity = self.entities[idx]
+        doc_id, entity = self.entities[idx]
         entity_inputs = self._get_entity_tokens(entity)
-        return entity_inputs
+        return doc_id, entity_inputs
 

@@ -5,18 +5,11 @@ import tarfile
 from argparse import ArgumentParser
 from uuid import uuid4
 
-import pytorch_lightning as pl
-import torch
 from bavard_ml_common.mlops.gcs import GCSClient
 from loguru import logger
-from pytorch_lightning.loggers import WandbLogger
-from torch.utils.data import DataLoader
-from transformers import BertTokenizer
 
-from src.bi_encoder import BiEncoder
-from src.config import DEVICE
+from src.train_zeshel import train_zeshel
 from src.transform_zeshel import transform_zeshel
-from src.zeshel_dataset import ZeshelDataset
 
 
 def parse_cli_args():
@@ -39,46 +32,23 @@ def parse_cli_args():
         "--batch-size",
         type=int,
     )
+    parser.add_argument(
+        "--val-check-interval",
+        type=int,
+        default=100
+    )
+    parser.add_argument(
+        "--limit-train-batches",
+        type=int,
+        default=None
+    )
+    parser.add_argument(
+        "--max-epochs",
+        type=int,
+        default=1
+    )
     parsed_args = parser.parse_args(args)
     return parsed_args
-
-
-def validate(model, valloader):
-    with torch.no_grad():
-        total_loss = 0
-        for batch in valloader:
-            me, ee, loss = model(**batch)
-            total_loss += loss.item()
-        print('Validation loss', total_loss)
-
-
-def train(work_dir: str, data_dir: str, batch_size: int):
-    model = BiEncoder()
-    model.train()
-    model.to(DEVICE)
-
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
-
-    trainset = ZeshelDataset(data_dir,
-                             split='train', tokenizer=tokenizer, device=DEVICE)
-
-    valset = ZeshelDataset(data_dir,
-                           split='val', tokenizer=tokenizer, device=DEVICE)
-
-    print('Validation examples:', len(valset))
-    valset = [valset[i] for i in range(100)]
-    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=12)
-    valloader = torch.utils.data.DataLoader(valset, batch_size=batch_size, num_workers=12)
-
-    accumulate_grad_batches = min(1, 128 // batch_size)
-    wandb_logger = WandbLogger(project='entity-linker')
-    trainer = pl.Trainer(
-        gpus=-1,
-        logger=[wandb_logger],
-        val_check_interval=100,
-        accumulate_grad_batches=accumulate_grad_batches,
-        log_every_n_steps=1)
-    trainer.fit(model, trainloader, valloader)
 
 
 def main():
@@ -112,15 +82,18 @@ def main():
 
     # Train
     logger.info(f"Training model.")
-    train(work_dir, zeshel_transformed_dir, batch_size=args.batch_size)
+    train_zeshel(work_dir, zeshel_transformed_dir,
+                 batch_size=args.batch_size,
+                 val_check_interval=args.val_check_interval,
+                 limit_train_batches=args.limit_train_batches,
+                 max_epochs=args.max_epochs)
+    logger.info(f"Training complete.")
+    logger.info(f"Uploading checkpoints dir to GCS.")
 
     # Save
     if GCSClient.is_gcs_uri(args.job_dir):
-        logsdir = os.path.join(work_dir, 'logs')
-        GCSClient().upload_dir(logsdir, args.job_dir)
-        # Clean up the intermediate copy.
-
-    # shutil.rmtree(args.output_dir)
+        checkpoints_dir = os.path.join(work_dir, 'checkpoints')
+        GCSClient().upload_dir(checkpoints_dir, args.job_dir)
 
 
 def ensure_dir(file_path):

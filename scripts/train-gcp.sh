@@ -18,6 +18,9 @@ gcloud ai-platform jobs submit training "$job_name" \
   -- \
   --data-file "gs://bavard-test-datasets/bavard/zeshel.tar.bz2" \
   --job-dir "gs://bavard-test-datasets/entity_linker_model" \
+  --batch-size=4 \
+  --val-check-interval=200 \
+  --max-epochs=1
 
 echo "kicked off training job ${job_name}"
 gcloud ai-platform jobs describe "$job_name"

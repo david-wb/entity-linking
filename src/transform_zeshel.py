@@ -51,6 +51,14 @@ def transform_zeshel(input_dir: str, output_dir: str):
         mentions = transform_mentions(input_dir, output_dir, split, corpus_dict)
         combine_entities(mentions, output_dir, split)
 
+        # Create tiny split for development
+        if split == 'train':
+            mentions_tiny = dict(list(mentions.items())[:100])
+            mentions_tiny_file = os.path.join(output_dir, f'mentions_tiny.json')
+            with open(mentions_tiny_file, 'w') as f:
+                json.dump(mentions_tiny, f, indent=2)
+                combine_entities(mentions_tiny, output_dir, 'tiny')
+
 
 def parse_cli_args():
     args = sys.argv[1:]

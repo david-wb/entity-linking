@@ -16,5 +16,8 @@ export DEVICE='cpu'
 
 python -m src.train_zeshel_gcp \
   --job-dir "gs://${bucket}/${model_dir}" \
-  --data-file "gs://${bucket}/${data_file}"
-
+  --data-file "gs://${bucket}/${data_file}" \
+  --batch-size=2 \
+  --limit-train-batches=10 \
+  --val-check-interval=10 \
+  --max-epochs=1
