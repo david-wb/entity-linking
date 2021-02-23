@@ -7,9 +7,15 @@ This repo contains a basic system for performing named entity linking. The ML mo
 # Setup
 
 1. Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
-2. Run `conda env create -f environment.yml` from inside the extracted directory.
-    - This creates a Conda environment called `enli`
-3. Run `source activate enli`
+2. Run `conda env create -f environment.yml` from inside the extracted directory. 
+   This creates a Conda environment called `enli`
+3. Run 
+   ```
+   source activate enli
+4. Install requirements.
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 # Get the data
 

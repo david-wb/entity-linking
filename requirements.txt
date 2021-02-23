@@ -5,3 +5,4 @@ bavard-ml-common==0.0.15
 loguru==0.5.3
 pytorch-lightning==1.1.8
 wandb==0.10.19
+jupyter==1.0.0

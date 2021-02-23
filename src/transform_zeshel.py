@@ -33,6 +33,7 @@ def combine_entities(mentions: Dict, output_dir: str, split: str):
     entities_file = os.path.join(output_dir, f'entities_{split}.json')
     with open(entities_file, 'w') as f:
         json.dump(entities, f, indent=2)
+    return entities
 
 
 def transform_zeshel(input_dir: str, output_dir: str):
@@ -47,9 +48,11 @@ def transform_zeshel(input_dir: str, output_dir: str):
             docs = [json.loads(line) for line in corpus_lines]
             corpus_dict[corpus] = {doc['document_id']: doc for doc in docs}
 
+    entity_splits = {}
     for split in ['train', 'val', 'test']:
         mentions = transform_mentions(input_dir, output_dir, split, corpus_dict)
-        combine_entities(mentions, output_dir, split)
+        print('Num mentions', split, len(mentions))
+        entity_splits[split] = combine_entities(mentions, output_dir, split)
 
         # Create tiny split for development
         if split == 'train':
@@ -58,6 +61,27 @@ def transform_zeshel(input_dir: str, output_dir: str):
             with open(mentions_tiny_file, 'w') as f:
                 json.dump(mentions_tiny, f, indent=2)
                 combine_entities(mentions_tiny, output_dir, 'tiny')
+
+    # Print entity totals and overlaps
+    for split, ents in entity_splits.items():
+        print(f'Num entities ({split})', len(ents))
+
+    train_ent_ids = set(entity_splits['train'].keys())
+    val_ent_ids = set(entity_splits['val'].keys())
+    test_ent_ids = set(entity_splits['test'].keys())
+    print('Train/val entity overlap:', len(train_ent_ids.intersection(val_ent_ids)))
+    print('Train/test entity overlap:', len(train_ent_ids.intersection(test_ent_ids)))
+    print('Val/test entity overlap:', len(val_ent_ids.intersection(test_ent_ids)))
+
+    all_docs = {}
+    for k, corpus in corpus_dict.items():
+        all_docs.update(corpus)
+
+    all_documents_path = os.path.join(output_dir, f'all_documents.json')
+    with open(all_documents_path, 'w') as f:
+        json.dump(all_docs, f, indent=2)
+
+    print('Total documents:', len(all_docs))
 
 
 def parse_cli_args():
