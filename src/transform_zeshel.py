@@ -51,7 +51,7 @@ def transform_zeshel(input_dir: str, output_dir: str):
     entity_splits = {}
     for split in ['train', 'val', 'test']:
         mentions = transform_mentions(input_dir, output_dir, split, corpus_dict)
-        print('Num mentions', split, len(mentions))
+        print(f'Num mentions ({split})', len(mentions))
         entity_splits[split] = combine_entities(mentions, output_dir, split)
 
         # Create tiny split for development
@@ -81,7 +81,7 @@ def transform_zeshel(input_dir: str, output_dir: str):
     with open(all_documents_path, 'w') as f:
         json.dump(all_docs, f, indent=2)
 
-    print('Total documents:', len(all_docs))
+    print('Total entities:', len(all_docs))
 
 
 def parse_cli_args():
