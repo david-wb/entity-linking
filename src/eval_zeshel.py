@@ -58,7 +58,7 @@ def compute_retrieval_rate(mentions, entities, k: int) -> float:
     entity_ids = entities.item().get('ids')
     mention_entity_ids = mentions.item().get('entity_ids')
 
-    nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(entity_embeddings)
+    nbrs = NearestNeighbors(n_neighbors=k, algorithm='brute').fit(entity_embeddings)
     d, indices = nbrs.kneighbors(mention_embeddings)
 
     total_mentions = mention_embeddings.shape[0]

@@ -34,22 +34,11 @@ class BiEncoder(pl.LightningModule):
         return me
 
     # x represents our data
-    def forward(self, mention_inputs, entity_inputs=None, negative_entity_inputs=None, **kwargs):
-        mention_inputs = {k: v.to(self.device) for k,v in mention_inputs.items()}
-
-        me = self.mention_embedder(**mention_inputs).last_hidden_state[:, 0]
-        me = self.fc_me(me)
-        me_norm = me.norm(p=2, dim=1, keepdim=True)
-        me = me.div(me_norm)
+    def forward(self, mention_inputs, entity_inputs=None, **kwargs):
+        me = self.get_mention_embeddings(mention_inputs)
 
         if entity_inputs:
-            entity_inputs = {k: v.to(self.device) for k, v in entity_inputs.items()}
-
-            ee = self.entity_embedder(**entity_inputs).last_hidden_state[:, 0]
-            ee = self.fc_ee(ee)
-            ee_norm = ee.norm(p=2, dim=1, keepdim=True)
-            ee = ee.div(ee_norm)
-
+            ee = self.get_entity_embeddings(entity_inputs)
             return me, ee
 
         return me
@@ -80,5 +69,5 @@ class BiEncoder(pl.LightningModule):
         self.log('val_loss', avg_loss, prog_bar=True)
 
     def configure_optimizers(self):
-        optimizer = AdamW(self.parameters(), lr=5e-5)
+        optimizer = AdamW(self.parameters(), lr=2e-5)
         return optimizer

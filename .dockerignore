@@ -9,3 +9,8 @@ transformed_zeshel/
 logs/
 checkpoints/
 wandb/
+*.npy
+notebooks/
+dockerfiles/
+scripts/
+test/
