@@ -24,18 +24,10 @@ def parse_cli_args():
     return parsed_args
 
 
-def evaluate(checkpoint_path: str, data_dir: str, batch_size: int):
-    pass
-
-
-def main():
-    args = parse_cli_args()
-
+def eval_zeshel(mention_embeddings: str, entity_embeddings: str):
     logger.info(f"Loading embeddings.")
-    mentions = np.load(args.mention_embeddings, allow_pickle=True)
-    entities = np.load(args.entity_embeddings, allow_pickle=True)
-    mention_embeddings = mentions.item().get('embeddings')
-    total_mentions = mention_embeddings.shape[0]
+    mentions = np.load(mention_embeddings, allow_pickle=True)
+    entities = np.load(entity_embeddings, allow_pickle=True)
     entity_ids = entities.item().get('ids')
     total_entities = len(entity_ids)
 
@@ -68,6 +60,12 @@ def compute_retrieval_rate(mentions, entities, k: int) -> float:
         if true_id in [entity_ids[i] for i in row]:
             n += 1
     return n / total_mentions
+
+
+def main():
+    args = parse_cli_args()
+    eval_zeshel(mention_embeddings=args.mention_embeddings,
+                entity_embeddings=args.entity_embeddings)
 
 
 if __name__ == '__main__':

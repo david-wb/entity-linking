@@ -1,8 +1,8 @@
 torch==1.6.0
-transformers==4.3.0
+transformers==4.3.3
 numpy==1.20.1
 bavard-ml-common==0.0.15
 loguru==0.5.3
-pytorch-lightning==1.1.8
-wandb==0.10.19
+pytorch-lightning==1.2.1
+wandb==0.10.20
 jupyter==1.0.0

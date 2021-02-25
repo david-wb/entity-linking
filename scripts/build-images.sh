@@ -20,6 +20,7 @@ gcloud beta auth configure-docker "${location}-docker.pkg.dev,gcr.io"
 base_image="entity-linker-base"
 # These images are pushed to GCR
 training_image="gcr.io/$project_id/entity-linker-training"
+eval_image="gcr.io/$project_id/entity-linker-eval"
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 cd "$DIR/../dockerfiles"
@@ -28,7 +29,9 @@ cd "$DIR/../dockerfiles"
 
 docker build -t "$base_image" -f base.Dockerfile ..
 docker build -t "$training_image:$version" -f training.Dockerfile ..
+docker build -t "$eval_image:$version" -f eval.Dockerfile ..
 
 # Push the images
 
 docker push "$training_image:$version"
+docker push "$eval_image:$version"

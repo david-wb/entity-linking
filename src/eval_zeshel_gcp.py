@@ -8,6 +8,8 @@ from uuid import uuid4
 from bavard_ml_common.mlops.gcs import GCSClient
 from loguru import logger
 
+from src.compute_embeddings import embedd_mentions, embedd_entities
+from src.eval_zeshel import eval_zeshel
 from src.train_zeshel import train_zeshel
 from src.transform_zeshel import transform_zeshel
 
@@ -17,10 +19,10 @@ def parse_cli_args():
 
     parser = ArgumentParser()
     parser.add_argument(
-        "--job-dir",
+        "--checkpoint-path",
         type=str,
         required=True,
-        help="The directory path (local or GCS) to save the final trained model."
+        help="The directory path (local or GCS) to the final trained model."
     )
     parser.add_argument(
         "--data-file",
@@ -32,35 +34,16 @@ def parse_cli_args():
         "--batch-size",
         type=int,
     )
-    parser.add_argument(
-        "--val-check-interval",
-        type=int,
-        default=100
-    )
-    parser.add_argument(
-        "--limit-train-batches",
-        type=int,
-        default=None
-    )
-    parser.add_argument(
-        "--max-epochs",
-        type=int,
-        default=1
-    )
     parsed_args = parser.parse_args(args)
     return parsed_args
 
 
 def main():
-    """Train/fine tune a response generator on the EmpatheticDialogues dataset. Expects GPU to be available.
-    """
     args = parse_cli_args()
 
     work_dir = os.path.join(os.getcwd(), str(uuid4()))
-    logger.info(f"Deleting the work folder {work_dir}")
-    if os.path.exists(work_dir):
-        shutil.rmtree(work_dir)
     os.makedirs(work_dir)
+    os.chdir(work_dir)
 
     # Get data
     zeshel_dir = os.path.join(work_dir, 'zeshel')
@@ -71,6 +54,13 @@ def main():
     else:
         data_filename = args.data_file
 
+    if GCSClient.is_gcs_uri(args.checkpoint_path):
+        checkpoint_path = os.path.join(work_dir, 'checkpoint.ckpt')
+        logger.info(f"Downloading checkpoint file.")
+        GCSClient().download_blob_to_filename(args.checkpoint_path, checkpoint_path)
+    else:
+        checkpoint_path = args.checkpoint_path
+
     logger.info(f"Extracting zeshel data.")
     tar = tarfile.open(data_filename, "r:bz2")
     tar.extractall(work_dir)
@@ -80,20 +70,27 @@ def main():
     zeshel_transformed_dir = os.path.join(work_dir, 'transformed_zeshel')
     transform_zeshel(zeshel_dir, zeshel_transformed_dir)
 
-    # Train
-    logger.info(f"Training model.")
-    train_zeshel(work_dir, zeshel_transformed_dir,
-                 batch_size=args.batch_size,
-                 val_check_interval=args.val_check_interval,
-                 limit_train_batches=args.limit_train_batches,
-                 max_epochs=args.max_epochs)
-    logger.info(f"Training complete.")
-    logger.info(f"Uploading checkpoints dir to GCS.")
+    # Compute embeddings.
+    logger.info(f"Computing mention embeddings.")
+    embedd_mentions(
+        checkpoint_path=checkpoint_path,
+        data_dir=zeshel_transformed_dir,
+        batch_size=4)
+
+    logger.info(f"Computing entity embeddings.")
+    embedd_entities(
+        checkpoint_path=checkpoint_path,
+        data_dir=zeshel_transformed_dir,
+        batch_size=4)
+
+    logger.info(f"Evaluating.")
+    eval_zeshel(
+        mention_embeddings=os.path.join(work_dir, 'zeshel_mention_embeddings_val.npy'),
+        entity_embeddings=os.path.join(work_dir, 'zeshel_entity_embeddings_val.npy'),
+    )
 
     # Save
-    if GCSClient.is_gcs_uri(args.job_dir):
-        checkpoints_dir = os.path.join(work_dir, 'checkpoints')
-        GCSClient().upload_dir(checkpoints_dir, args.job_dir)
+    # TODO
 
 
 if __name__ == '__main__':

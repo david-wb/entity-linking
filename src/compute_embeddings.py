@@ -38,7 +38,8 @@ def parse_cli_args():
 
 def embedd_entities(checkpoint_path: str, data_dir: str, batch_size: int):
     model = BiEncoder()
-    model.load_from_checkpoint(checkpoint_path=checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
+    model.load_state_dict(checkpoint['state_dict'])
     model.eval()
     model.to(DEVICE)
 
@@ -53,7 +54,7 @@ def embedd_entities(checkpoint_path: str, data_dir: str, batch_size: int):
     with torch.no_grad():
         for ids, entities_inputs in tqdm(entities_loader):
             entities_inputs = {k: v.to(DEVICE) for (k,v) in entities_inputs.items()}
-            entity_embeddings = model.get_entity_embeddings(entities_inputs).numpy()
+            entity_embeddings = model.get_entity_embeddings(entities_inputs).cpu().numpy()
             all_embeddings.append(entity_embeddings)
             all_ids += ids
 
@@ -64,7 +65,8 @@ def embedd_entities(checkpoint_path: str, data_dir: str, batch_size: int):
 
 def embedd_mentions(checkpoint_path: str, data_dir: str, batch_size: int):
     model = BiEncoder()
-    model.load_from_checkpoint(checkpoint_path=checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
+    model.load_state_dict(checkpoint['state_dict'])
     model.eval()
     model.to(DEVICE)
 
@@ -83,7 +85,7 @@ def embedd_mentions(checkpoint_path: str, data_dir: str, batch_size: int):
             mention_ids += batch['mention_document_ids']
             mention_inputs = batch['mention_inputs']
             mention_inputs = {k: v.to(DEVICE) for (k,v) in mention_inputs.items()}
-            embeddings = model.get_mention_embeddings(mention_inputs).numpy()
+            embeddings = model.get_mention_embeddings(mention_inputs).cpu().numpy()
             all_embeddings.append(embeddings)
 
     all_embeddings = np.vstack(all_embeddings)

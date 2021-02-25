@@ -21,16 +21,16 @@ class BiEncoder(pl.LightningModule):
         entity_inputs = {k: v.to(self.device) for k, v in entity_inputs.items()}
         ee = self.entity_embedder(**entity_inputs).last_hidden_state[:, 0]
         ee = self.fc_ee(ee)
-        ee_norm = ee.norm(p=2, dim=1, keepdim=True)
-        ee = ee.div(ee_norm)
+        # ee_norm = ee.norm(p=2, dim=1, keepdim=True)
+        # ee = ee.div(ee_norm)
         return ee
 
     def get_mention_embeddings(self, mention_inputs):
         mention_inputs = {k: v.to(self.device) for k, v in mention_inputs.items()}
         me = self.mention_embedder(**mention_inputs).last_hidden_state[:, 0]
         me = self.fc_me(me)
-        me_norm = me.norm(p=2, dim=1, keepdim=True)
-        me = me.div(me_norm)
+        # me_norm = me.norm(p=2, dim=1, keepdim=True)
+        # me = me.div(me_norm)
         return me
 
     # x represents our data

@@ -41,9 +41,11 @@ def train_zeshel(work_dir: str,
     wandb_logger = WandbLogger(project='entity-linker')
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
-        save_top_k=1,
+        mode='min',
+        save_top_k=2,
         verbose=True,
-        filepath=os.path.join(work_dir, f'checkpoints/entity_linker_{datetime.now().strftime("%m%d%H%M%S")}')
+        dirpath=os.path.join(work_dir, f'checkpoints'),
+        filename='{epoch}-{val_loss:.2f}-{other_metric:.2f}'
     )
     trainer = pl.Trainer(
         gpus=-1 if DEVICE != 'cpu' else 0,

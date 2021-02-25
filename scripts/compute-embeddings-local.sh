@@ -5,7 +5,7 @@ set -eo pipefail
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 cd "$DIR/.."
 
-checkpoint_path="checkpoints/entity_linker_0222210142.ckpt"
+checkpoint_path="checkpoints/entity_linker_0224053053.ckpt"
 data_dir="transformed_zeshel"
 
 export DEVICE='cpu'
