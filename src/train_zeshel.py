@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from typing import Optional
 
 import pytorch_lightning as pl
@@ -44,7 +45,7 @@ def train_zeshel(work_dir: str,
         save_top_k=2,
         verbose=True,
         dirpath=os.path.join(work_dir, f'checkpoints'),
-        filename='{epoch}-{val_loss:.2f}-{other_metric:.2f}'
+        filename='{epoch}-{val_loss:.2f}' + f'_{datetime.now().strftime("%m_%d_%H%M_%S")}'
     )
     trainer = pl.Trainer(
         gpus=-1 if DEVICE != 'cpu' else 0,
