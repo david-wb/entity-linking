@@ -17,7 +17,7 @@ class ZeshelDataset(Dataset):
                  zeshel_home: str,
                  split: str,
                  tokenizer: PreTrainedTokenizer,
-                 context_size=32,
+                 context_size=128,
                  transform=None,
                  device='cpu'):
         """
