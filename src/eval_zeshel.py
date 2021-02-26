@@ -3,7 +3,6 @@ from argparse import ArgumentParser
 
 import numpy as np
 from loguru import logger
-from sklearn.neighbors import NearestNeighbors
 
 
 def parse_cli_args():
@@ -50,14 +49,14 @@ def compute_retrieval_rate(mentions, entities, k: int) -> float:
     entity_ids = entities.item().get('ids')
     mention_entity_ids = mentions.item().get('entity_ids')
 
-    nbrs = NearestNeighbors(n_neighbors=k, algorithm='brute').fit(entity_embeddings)
-    d, indices = nbrs.kneighbors(mention_embeddings)
+    scores = np.matmul(mention_embeddings, entity_embeddings.T)
 
-    total_mentions = mention_embeddings.shape[0]
+    total_mentions = scores.shape[0]
     n = 0
-    for i, row in enumerate(indices):
+    for i, row in enumerate(scores):
+        indices = np.argsort(row)[::-1][:k]
         true_id = mention_entity_ids[i]
-        if true_id in [entity_ids[i] for i in row]:
+        if true_id in [entity_ids[i] for i in indices]:
             n += 1
     return n / total_mentions
 

@@ -1,5 +1,6 @@
-import torch
 import sys
+
+import torch
 
 
 def main():

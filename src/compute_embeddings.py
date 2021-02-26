@@ -37,9 +37,7 @@ def parse_cli_args():
 
 
 def embedd_entities(checkpoint_path: str, data_dir: str, batch_size: int):
-    model = BiEncoder()
-    checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
-    model.load_state_dict(checkpoint['state_dict'])
+    model = BiEncoder.load_from_checkpoint(checkpoint_path, map_location=torch.device('cpu'))
     model.eval()
     model.to(DEVICE)
 
@@ -64,9 +62,7 @@ def embedd_entities(checkpoint_path: str, data_dir: str, batch_size: int):
 
 
 def embedd_mentions(checkpoint_path: str, data_dir: str, batch_size: int):
-    model = BiEncoder()
-    checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
-    model.load_state_dict(checkpoint['state_dict'])
+    model = BiEncoder.load_from_checkpoint(checkpoint_path, map_location=torch.device('cpu'))
     model.eval()
     model.to(DEVICE)
 

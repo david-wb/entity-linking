@@ -1,5 +1,4 @@
 import os
-import shutil
 import sys
 import tarfile
 from argparse import ArgumentParser
@@ -10,7 +9,6 @@ from loguru import logger
 
 from src.compute_embeddings import embedd_mentions, embedd_entities
 from src.eval_zeshel import eval_zeshel
-from src.train_zeshel import train_zeshel
 from src.transform_zeshel import transform_zeshel
 
 
