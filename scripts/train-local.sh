@@ -7,4 +7,8 @@ cd "$DIR/.."
 
 export DEVICE='cpu'
 
-python -m src.train_zeshel_local --val-check-interval 1 --limit-train-batches=2 --batch-size=4
+python -m src.train_zeshel_local \
+  --val-check-interval 1 \
+  --limit-train-batches=2 \
+  --batch-size=1 \
+  --base-model-type="DECLUTR_BASE"

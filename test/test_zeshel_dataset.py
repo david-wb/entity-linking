@@ -22,10 +22,11 @@ class TestZeshelDataset(TestCase):
 
     def test_special_token(self):
         sample = self.dataset[0]
-        input_tokens = self.tokenizer.convert_ids_to_tokens(sample['mention_inputs']['input_ids'])
-        print(input_tokens)
-        self.assertEqual(input_tokens[0], '[CLS]')
-        self.assertEqual(input_tokens[-1], '[PAD]')
+        mention_input_tokens = self.tokenizer.convert_ids_to_tokens(sample['mention_inputs']['input_ids'])
+        entity_input_tokens = self.tokenizer.convert_ids_to_tokens(sample['entity_inputs']['input_ids'])
+        print(entity_input_tokens)
+        self.assertEqual(mention_input_tokens[0], '[CLS]')
+        self.assertEqual(mention_input_tokens[-1], '[PAD]')
 
     def test_loader(self):
         loader = DataLoader(self.dataset, batch_size=2)

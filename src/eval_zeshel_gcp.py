@@ -32,6 +32,12 @@ def parse_cli_args():
         "--batch-size",
         type=int,
     )
+    parser.add_argument(
+        "--base-model-type",
+        type=str,
+        choices=['BERT_BASE', 'DECLUTR_BASE'],
+        default='BERT_BASE'
+    )
     parsed_args = parser.parse_args(args)
     return parsed_args
 
@@ -73,13 +79,15 @@ def main():
     embedd_mentions(
         checkpoint_path=checkpoint_path,
         data_dir=zeshel_transformed_dir,
-        batch_size=4)
+        batch_size=4,
+        base_model_type=args.base_model_type)
 
     logger.info(f"Computing entity embeddings.")
     embedd_entities(
         checkpoint_path=checkpoint_path,
         data_dir=zeshel_transformed_dir,
-        batch_size=4)
+        batch_size=4,
+        base_model_type=args.base_model_type)
 
     logger.info(f"Evaluating.")
     eval_zeshel(

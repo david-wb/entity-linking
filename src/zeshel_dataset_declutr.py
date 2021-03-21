@@ -7,12 +7,8 @@ from numpy.random import randint
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
-from src.constants import MENTION_START_TAG, MENTION_END_TAG
 
-
-class ZeshelDataset(Dataset):
-    """Zero-Shot Entity Linking Dataset"""
-
+class ZeshelDatasetDeCLUTR(Dataset):
     def __init__(self,
                  zeshel_home: str,
                  split: str,
@@ -20,12 +16,6 @@ class ZeshelDataset(Dataset):
                  context_size=32,
                  transform=None,
                  device='cpu'):
-        """
-        Args:
-            zeshel_home (string): Path to folder containing the transformed Zeshel data.
-            split (string): train, val, or test.
-            context_size (int): Number of words to keep on the left and right of the mention.
-        """
         self.zeshel_home = zeshel_home
         self.transform = transform
         self.context_size = context_size
@@ -51,15 +41,14 @@ class ZeshelDataset(Dataset):
         mention_text = mention['text'].lower()
         words = mention['source_document']['text'].lower().split()
 
-        mention_tokens = [MENTION_START_TAG] + self.tokenizer.tokenize(mention_text) + [MENTION_END_TAG]
+        mention_tokens = ['|'] + self.tokenizer.tokenize(mention_text) + ['|']
         left_tokens = self.tokenizer.tokenize(' '.join(words[:start_i]))
         right_tokens = self.tokenizer.tokenize(' '.join(words[end_i + 1:]))
 
-        keep_left = (self.context_size - 2 - len(mention_tokens)) // 2
-        keep_right = (self.context_size - 2 - keep_left - len(mention_tokens))
+        keep_left = (self.context_size - len(mention_tokens)) // 2
+        keep_right = (self.context_size - keep_left - len(mention_tokens))
         ctx_tokens = left_tokens[-keep_left:] + mention_tokens + right_tokens[:keep_right]
-        ctx_tokens = ctx_tokens[:self.tokenizer.model_max_length - 2]
-        ctx_tokens = ['[CLS]'] + ctx_tokens + ['[SEP]']
+        ctx_tokens = ctx_tokens[:self.tokenizer.model_max_length]
 
         input_ids = self.tokenizer.convert_tokens_to_ids(ctx_tokens)
         attention_mask = [1] * len(input_ids)
@@ -73,7 +62,6 @@ class ZeshelDataset(Dataset):
         inputs = {
             'input_ids': torch.LongTensor(input_ids),
             'attention_mask': torch.LongTensor(attention_mask),
-            'token_type_ids': torch.LongTensor(token_type_ids),
         }
         return inputs
 
@@ -83,7 +71,7 @@ class ZeshelDataset(Dataset):
 
         title_tokens = self.tokenizer.tokenize(title)
         text_tokens = self.tokenizer.tokenize(text)
-        tokens = title_tokens + ['[unused2]'] + text_tokens
+        tokens = title_tokens + ['|'] + text_tokens
         tokens = tokens[:self.tokenizer.model_max_length]
 
         input_ids = self.tokenizer.convert_tokens_to_ids(tokens)
@@ -98,7 +86,6 @@ class ZeshelDataset(Dataset):
         inputs = {
             'input_ids': torch.LongTensor(input_ids),
             'attention_mask': torch.LongTensor(attention_mask),
-            'token_type_ids': torch.LongTensor(token_type_ids),
         }
         return inputs
 

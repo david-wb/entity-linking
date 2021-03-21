@@ -20,7 +20,8 @@ gcloud ai-platform jobs submit training "$job_name" \
   --job-dir "gs://bavard-test-datasets/entity_linker_model" \
   --batch-size=4 \
   --val-check-interval=200 \
-  --max-epochs=5
+  --max-epochs=5 \
+  --base_model_type="DECLUTR_BASE"
 
 echo "kicked off training job ${job_name}"
 gcloud ai-platform jobs describe "$job_name"

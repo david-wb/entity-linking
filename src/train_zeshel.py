@@ -7,11 +7,13 @@ import torch
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
-from transformers import BertTokenizer
+from transformers import BertTokenizer, AutoTokenizer
 
 from src.bi_encoder import BiEncoder
 from src.config import DEVICE
+from src.enums import BaseModelType
 from src.zeshel_dataset import ZeshelDataset
+from src.zeshel_dataset_declutr import ZeshelDatasetDeCLUTR
 
 
 def train_zeshel(work_dir: str,
@@ -19,18 +21,26 @@ def train_zeshel(work_dir: str,
                  batch_size: int,
                  val_check_interval: int,
                  limit_train_batches: Optional[int] = None,
-                 max_epochs: int = 1):
-    model = BiEncoder()
+                 max_epochs: int = 1,
+                 base_model_type: BaseModelType = BaseModelType.BERT_BASE):
+    model = BiEncoder(base_model_type=base_model_type)
     model.train()
     model.to(DEVICE)
 
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
-
-    trainset = ZeshelDataset(data_dir,
-                             split='train', tokenizer=tokenizer, device=DEVICE)
-
-    valset = ZeshelDataset(data_dir,
-                           split='val', tokenizer=tokenizer, device=DEVICE)
+    if base_model_type == BaseModelType.BERT_BASE.name:
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
+        trainset = ZeshelDataset(data_dir,
+                                 split='train', tokenizer=tokenizer, device=DEVICE)
+        valset = ZeshelDataset(data_dir,
+                               split='val', tokenizer=tokenizer, device=DEVICE)
+    elif base_model_type == BaseModelType.DECLUTR_BASE.name:
+        tokenizer = AutoTokenizer.from_pretrained("johngiorgi/declutr-base")
+        trainset = ZeshelDatasetDeCLUTR(data_dir,
+                                 split='train', tokenizer=tokenizer, device=DEVICE)
+        valset = ZeshelDatasetDeCLUTR(data_dir,
+                               split='val', tokenizer=tokenizer, device=DEVICE)
+    else:
+        raise RuntimeError(f'Invalid base model type: {base_model_type}')
 
     print('Validation examples:', len(valset))
     valset = [valset[i] for i in range(100)]

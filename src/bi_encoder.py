@@ -1,33 +1,70 @@
+from typing import Dict
+
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-from torch import nn
-from transformers import BertModel, AdamW
+from torch import nn, Tensor
+from transformers import BertModel, AdamW, AutoModel
+
+from src.enums import BaseModelType
 
 
 class BiEncoder(pl.LightningModule):
-    def __init__(self):
+    def __init__(self, base_model_type: BaseModelType = BaseModelType.BERT_BASE):
         super(BiEncoder, self).__init__()
 
-        # Mention embedder
-        self.mention_embedder = BertModel.from_pretrained('bert-base-uncased')
-        self.fc_me = nn.Linear(768, 128)
+        self.base_model_type = base_model_type
 
-        # Entity embedder
-        self.entity_embedder = BertModel.from_pretrained('bert-base-uncased')
-        self.fc_ee = nn.Linear(768, 128)
+        if base_model_type == BaseModelType.BERT_BASE.name:
+            # Mention embedder
+            self.mention_embedder = BertModel.from_pretrained('bert-base-uncased')
+            self.fc_me = nn.Linear(768, 128)
+
+            # Entity embedder
+            self.entity_embedder = BertModel.from_pretrained('bert-base-uncased')
+            self.fc_ee = nn.Linear(768, 128)
+        elif base_model_type == BaseModelType.DECLUTR_BASE.name:
+            # Mention embedder
+            self.mention_embedder = AutoModel.from_pretrained("johngiorgi/declutr-base")
+            self.fc_me = nn.Linear(768, 128)
+
+            # Entity embedder
+            self.entity_embedder = AutoModel.from_pretrained("johngiorgi/declutr-base")
+            self.fc_ee = nn.Linear(768, 128)
+        else:
+            raise RuntimeError(f'Invalid base model type: {base_model_type}')
 
     def get_entity_embeddings(self, entity_inputs):
         entity_inputs = {k: v.to(self.device) for k, v in entity_inputs.items()}
-        ee = self.entity_embedder(**entity_inputs).last_hidden_state[:, 0]
-        ee = self.fc_ee(ee)
+
+        if self.base_model_type == BaseModelType.BERT_BASE.name:
+            ee = self.entity_embedder(**entity_inputs).last_hidden_state[:, 0]
+            ee = self.fc_ee(ee)
+        elif self.base_model_type == BaseModelType.DECLUTR_BASE.name:
+            sequence_output = self.entity_embedder(**entity_inputs)[0]
+            ee = torch.sum(
+                sequence_output * entity_inputs["attention_mask"].unsqueeze(-1), dim=1
+            ) / torch.clamp(torch.sum(entity_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
+            ee = self.fc_ee(ee)
+        else:
+            raise RuntimeError(f'Invalid base model type: {self.base_model_type}')
 
         return ee
 
     def get_mention_embeddings(self, mention_inputs):
-        mention_inputs = {k: v.to(self.device) for k, v in mention_inputs.items()}
-        me = self.mention_embedder(**mention_inputs).last_hidden_state[:, 0]
-        me = self.fc_me(me)
+        mention_inputs: Dict[str, Tensor] = {k: v.to(self.device) for k, v in mention_inputs.items()}
+
+        if self.base_model_type == BaseModelType.BERT_BASE.name:
+            me = self.mention_embedder(**mention_inputs).last_hidden_state[:, 0]
+            me = self.fc_me(me)
+        elif self.base_model_type == BaseModelType.DECLUTR_BASE.name:
+            sequence_output = self.mention_embedder(**mention_inputs)[0]
+            me = torch.sum(
+                sequence_output * mention_inputs["attention_mask"].unsqueeze(-1), dim=1
+            ) / torch.clamp(torch.sum(mention_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
+            me = self.fc_me(me)
+        else:
+            raise RuntimeError(f'Invalid base model type: {self.base_model_type}')
 
         return me
 

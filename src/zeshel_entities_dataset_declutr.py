@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
 
-class ZeshelEntitiesDataset(Dataset):
+class ZeshelEntitiesDatasetDeCLUTR(Dataset):
     def __init__(self,
                  zeshel_home: str,
                  split: str,
@@ -28,7 +28,7 @@ class ZeshelEntitiesDataset(Dataset):
 
         title_tokens = self.tokenizer.tokenize(title)
         text_tokens = self.tokenizer.tokenize(text)
-        tokens = title_tokens + ['[unused2]'] + text_tokens
+        tokens = title_tokens + ['|'] + text_tokens
         tokens = tokens[:self.tokenizer.model_max_length]
 
         input_ids = self.tokenizer.convert_tokens_to_ids(tokens)
@@ -43,7 +43,6 @@ class ZeshelEntitiesDataset(Dataset):
         inputs = {
             'input_ids': torch.LongTensor(input_ids),
             'attention_mask': torch.LongTensor(attention_mask),
-            'token_type_ids': torch.LongTensor(token_type_ids),
         }
         return inputs
 
