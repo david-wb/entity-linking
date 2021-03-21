@@ -30,17 +30,9 @@ def eval_zeshel(mention_embeddings: str, entity_embeddings: str):
     entity_ids = entities.item().get('ids')
     total_entities = len(entity_ids)
 
-    retrieval_rate_5 = compute_retrieval_rate(mentions, entities, k=5)
-    print('Retrieval rate (k=5):', retrieval_rate_5, f', (expected rate for random = {5/total_entities})')
-
-    retrieval_rate = compute_retrieval_rate(mentions, entities, k=10)
-    print('Retrieval rate (k=10):', retrieval_rate, f', (expected rate for random = {10/total_entities})')
-
-    retrieval_rate = compute_retrieval_rate(mentions, entities, k=20)
-    print('Retrieval rate (k=20):', retrieval_rate, f', (expected rate for random = {20/total_entities})')
-
-    retrieval_rate = compute_retrieval_rate(mentions, entities, k=50)
-    print('Retrieval rate (k=50):', retrieval_rate, f', (expected rate for random = {50/total_entities})')
+    for k in [1, 4, 8, 16, 32, 64]:
+        retrieval_rate = compute_retrieval_rate(mentions, entities, k=k)
+        print(f'Retrieval rate (k={k}):', retrieval_rate, f', (expected rate for random = {k/total_entities})')
 
 
 def compute_retrieval_rate(mentions, entities, k: int) -> float:

@@ -21,7 +21,7 @@ gcloud ai-platform jobs submit training "$job_name" \
   --batch-size=4 \
   --val-check-interval=200 \
   --max-epochs=5 \
-  --base_model_type="DECLUTR_BASE"
+  --base-model-type="DECLUTR_BASE"
 
 echo "kicked off training job ${job_name}"
 gcloud ai-platform jobs describe "$job_name"
