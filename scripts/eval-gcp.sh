@@ -17,7 +17,8 @@ gcloud ai-platform jobs submit training "$job_name" \
   --master-accelerator count=1,type=nvidia-tesla-t4 \
   -- \
   --data-file "gs://bavard-test-datasets/bavard/zeshel.tar.bz2" \
-  --checkpoint-path "gs://bavard-test-datasets/entity_linker_model/epoch=4-val_loss=0.05_02_26_1914_17.ckpt"
+  --checkpoint-path "gs://bavard-test-datasets/entity_linker_model/epoch=4-val_loss=0.02_03_21_0037_55.ckpt" \
+  --base-model-type="DECLUTR_BASE"
 
 echo "kicked off training job ${job_name}"
 gcloud ai-platform jobs describe "$job_name"

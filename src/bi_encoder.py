@@ -10,7 +10,7 @@ from src.enums import BaseModelType
 
 
 class BiEncoder(pl.LightningModule):
-    def __init__(self, base_model_type: BaseModelType = BaseModelType.BERT_BASE):
+    def __init__(self, base_model_type: str):
         super(BiEncoder, self).__init__()
 
         self.base_model_type = base_model_type

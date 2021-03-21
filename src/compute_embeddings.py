@@ -35,19 +35,29 @@ def parse_cli_args():
         type=int,
         default=8,
     )
+    parser.add_argument(
+        "--base-model-type",
+        type=str,
+        choices=['BERT_BASE', 'DECLUTR_BASE'],
+        required=True
+    )
     parsed_args = parser.parse_args(args)
     return parsed_args
 
 
 def embedd_entities(checkpoint_path: str, data_dir: str, batch_size: int, base_model_type: BaseModelType):
-    model = BiEncoder.load_from_checkpoint(checkpoint_path, map_location=torch.device('cpu'))
+    model = BiEncoder.load_from_checkpoint(
+        checkpoint_path,
+        map_location=torch.device('cpu'),
+        base_model_type=base_model_type
+    )
     model.eval()
     model.to(DEVICE)
 
-    if base_model_type == BaseModelType.BERT_BASE:
+    if base_model_type == BaseModelType.BERT_BASE.name:
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
         entities_dataset = ZeshelEntitiesDataset(data_dir, split='val', tokenizer=tokenizer)
-    elif base_model_type == BaseModelType.DECLUTR_BASE:
+    elif base_model_type == BaseModelType.DECLUTR_BASE.name:
         tokenizer = AutoTokenizer.from_pretrained("johngiorgi/declutr-base")
         entities_dataset = ZeshelEntitiesDatasetDeCLUTR(data_dir, split='val', tokenizer=tokenizer)
     else:
@@ -67,11 +77,15 @@ def embedd_entities(checkpoint_path: str, data_dir: str, batch_size: int, base_m
 
     all_embeddings = np.vstack(all_embeddings)
     print(all_embeddings.shape)
-    np.save('zeshel_entity_embeddings_val', { 'embeddings': all_embeddings, 'ids': all_ids })
+    np.save('zeshel_entity_embeddings_val', {'embeddings': all_embeddings, 'ids': all_ids})
 
 
-def embedd_mentions(checkpoint_path: str, data_dir: str, batch_size: int, base_model_type: BaseModelType):
-    model = BiEncoder.load_from_checkpoint(checkpoint_path, map_location=torch.device('cpu'))
+def embedd_mentions(checkpoint_path: str, data_dir: str, batch_size: int, base_model_type: str):
+    model = BiEncoder.load_from_checkpoint(
+        checkpoint_path,
+        map_location=torch.device('cpu'),
+        base_model_type=base_model_type
+    )
     model.eval()
     model.to(DEVICE)
 

@@ -59,6 +59,8 @@ class ZeshelDatasetDeCLUTR(Dataset):
         attention_mask += padding
         token_type_ids += padding
 
+        assert len(input_ids) <= 512
+
         inputs = {
             'input_ids': torch.LongTensor(input_ids),
             'attention_mask': torch.LongTensor(attention_mask),
@@ -82,6 +84,8 @@ class ZeshelDatasetDeCLUTR(Dataset):
         input_ids += padding
         attention_mask += padding
         token_type_ids += padding
+
+        assert len(input_ids) <= 512
 
         inputs = {
             'input_ids': torch.LongTensor(input_ids),

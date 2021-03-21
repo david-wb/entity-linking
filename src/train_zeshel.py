@@ -22,7 +22,7 @@ def train_zeshel(work_dir: str,
                  val_check_interval: int,
                  limit_train_batches: Optional[int] = None,
                  max_epochs: int = 1,
-                 base_model_type: BaseModelType = BaseModelType.BERT_BASE):
+                 base_model_type: str = BaseModelType.BERT_BASE.name):
     model = BiEncoder(base_model_type=base_model_type)
     model.train()
     model.to(DEVICE)
@@ -55,7 +55,7 @@ def train_zeshel(work_dir: str,
         save_top_k=2,
         verbose=True,
         dirpath=os.path.join(work_dir, f'checkpoints'),
-        filename='{epoch}-{val_loss:.2f}' + f'_{datetime.now().strftime("%m_%d_%H%M_%S")}'
+        filename='{epoch}-{val_loss:.3f}' + f'__{base_model_type}_{datetime.now().strftime("%m_%d_%H%M_%S")}'
     )
     trainer = pl.Trainer(
         gpus=-1 if DEVICE != 'cpu' else 0,

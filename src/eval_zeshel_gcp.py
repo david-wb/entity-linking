@@ -36,7 +36,7 @@ def parse_cli_args():
         "--base-model-type",
         type=str,
         choices=['BERT_BASE', 'DECLUTR_BASE'],
-        default='BERT_BASE'
+        required=True
     )
     parsed_args = parser.parse_args(args)
     return parsed_args
