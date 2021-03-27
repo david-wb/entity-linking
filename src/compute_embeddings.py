@@ -79,7 +79,7 @@ def embedd_entities(checkpoint_path: str, data_dir: str, batch_size: int, base_m
 
     all_embeddings = np.vstack(all_embeddings)
     print(all_embeddings.shape)
-    np.save('zeshel_entity_embeddings_val', {'embeddings': all_embeddings, 'ids': all_ids})
+    np.save(f'zeshel_entity_embeddings_{split}', {'embeddings': all_embeddings, 'ids': all_ids})
 
 
 def embedd_mentions(checkpoint_path: str, data_dir: str, batch_size: int, base_model_type: str, split: str):
