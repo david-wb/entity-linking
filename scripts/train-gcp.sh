@@ -2,8 +2,10 @@
 
 set -eo pipefail
 
+base_model_type="ROBERTA_BASE"
+
 project_id="bavard-test-293219"
-job_name="entity_linker_$(date +%m%d%H%M%S)"
+job_name="entity_linker_${base_model_type}_$(date +%m%d%H%M%S)"
 region="us-central1"
 image="gcr.io/${project_id}/entity-linker-training:1.0.0"
 
@@ -21,7 +23,7 @@ gcloud ai-platform jobs submit training "$job_name" \
   --batch-size=4 \
   --val-check-interval=200 \
   --max-epochs=5 \
-  --base-model-type="BERT_BASE"
+  --base-model-type=base_model_type
 
 echo "kicked off training job ${job_name}"
 gcloud ai-platform jobs describe "$job_name"

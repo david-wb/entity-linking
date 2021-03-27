@@ -50,7 +50,7 @@ def parse_cli_args():
     parser.add_argument(
         "--base-model-type",
         type=str,
-        choices=['BERT_BASE', 'DECLUTR_BASE'],
+        choices=['BERT_BASE', 'ROBERTA_BASE', 'DECLUTR_BASE'],
         required=True
     )
     parsed_args = parser.parse_args(args)

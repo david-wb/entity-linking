@@ -35,11 +35,29 @@ def parse_cli_args():
     parser.add_argument(
         "--base-model-type",
         type=str,
-        choices=['BERT_BASE', 'DECLUTR_BASE'],
+        choices=['BERT_BASE', 'ROBERTA_BASE', 'DECLUTR_BASE'],
         required=True
     )
     parsed_args = parser.parse_args(args)
     return parsed_args
+
+
+def compute_embeddings(checkpoint_path: str, zeshel_transformed_dir: str, base_model_type: str, split: str):
+    logger.info(f"Computing mention embeddings.")
+    embedd_mentions(
+        checkpoint_path=checkpoint_path,
+        data_dir=zeshel_transformed_dir,
+        batch_size=4,
+        base_model_type=base_model_type,
+        split=split)
+
+    logger.info(f"Computing entity embeddings.")
+    embedd_entities(
+        checkpoint_path=checkpoint_path,
+        data_dir=zeshel_transformed_dir,
+        batch_size=4,
+        base_model_type=base_model_type,
+        split=split)
 
 
 def main():
@@ -74,29 +92,35 @@ def main():
     zeshel_transformed_dir = os.path.join(work_dir, 'transformed_zeshel')
     transform_zeshel(zeshel_dir, zeshel_transformed_dir)
 
-    # Compute embeddings.
-    logger.info(f"Computing mention embeddings.")
-    embedd_mentions(
-        checkpoint_path=checkpoint_path,
-        data_dir=zeshel_transformed_dir,
-        batch_size=4,
-        base_model_type=args.base_model_type)
+    """
+    Validation set
+    """
+    logger.info(f"Computing embeddings on validation set.")
+    compute_embeddings(checkpoint_path=checkpoint_path,
+                       zeshel_transformed_dir=zeshel_transformed_dir,
+                       base_model_type=args.base_model_type,
+                       split='val')
 
-    logger.info(f"Computing entity embeddings.")
-    embedd_entities(
-        checkpoint_path=checkpoint_path,
-        data_dir=zeshel_transformed_dir,
-        batch_size=4,
-        base_model_type=args.base_model_type)
-
-    logger.info(f"Evaluating.")
+    logger.info(f"Evaluating on validation set.")
     eval_zeshel(
         mention_embeddings=os.path.join(work_dir, 'zeshel_mention_embeddings_val.npy'),
         entity_embeddings=os.path.join(work_dir, 'zeshel_entity_embeddings_val.npy'),
     )
 
-    # Save
-    # TODO
+    """
+    Test set
+    """
+    logger.info(f"Computing embeddings on test set.")
+    compute_embeddings(checkpoint_path=checkpoint_path,
+                       zeshel_transformed_dir=zeshel_transformed_dir,
+                       base_model_type=args.base_model_type,
+                       split='test')
+
+    logger.info(f"Evaluating on test set.")
+    eval_zeshel(
+        mention_embeddings=os.path.join(work_dir, 'zeshel_mention_embeddings_test.npy'),
+        entity_embeddings=os.path.join(work_dir, 'zeshel_entity_embeddings_test.npy'),
+    )
 
 
 if __name__ == '__main__':

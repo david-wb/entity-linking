@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
-from transformers import BertModel, AdamW, AutoModel
+from transformers import BertModel, AdamW, AutoModel, RobertaModel
 
 from src.enums import BaseModelType
 
@@ -18,27 +18,32 @@ class BiEncoder(pl.LightningModule):
         if base_model_type == BaseModelType.BERT_BASE.name:
             # Mention embedder
             self.mention_embedder = BertModel.from_pretrained('bert-base-uncased')
-            self.fc_me = nn.Linear(768, 128)
-
             # Entity embedder
             self.entity_embedder = BertModel.from_pretrained('bert-base-uncased')
-            self.fc_ee = nn.Linear(768, 128)
+        elif base_model_type == BaseModelType.ROBERTA_BASE.name:
+            # Mention embedder
+            self.mention_embedder = RobertaModel.from_pretrained('roberta-base')
+            # Entity embedder
+            self.entity_embedder = RobertaModel.from_pretrained('roberta-base')
         elif base_model_type == BaseModelType.DECLUTR_BASE.name:
             # Mention embedder
             self.mention_embedder = AutoModel.from_pretrained("johngiorgi/declutr-base")
-            self.fc_me = nn.Linear(768, 128)
-
             # Entity embedder
             self.entity_embedder = AutoModel.from_pretrained("johngiorgi/declutr-base")
-            self.fc_ee = nn.Linear(768, 128)
         else:
             raise RuntimeError(f'Invalid base model type: {base_model_type}')
+
+        self.fc_me = nn.Linear(768, 128)
+        self.fc_ee = nn.Linear(768, 128)
 
     def get_entity_embeddings(self, entity_inputs):
         entity_inputs = {k: v.to(self.device) for k, v in entity_inputs.items()}
 
         if self.base_model_type == BaseModelType.BERT_BASE.name:
             ee = self.entity_embedder(**entity_inputs).last_hidden_state[:, 0]
+            ee = self.fc_ee(ee)
+        elif self.base_model_type == BaseModelType.ROBERTA_BASE.name:
+            ee = self.entity_embedder(**entity_inputs).pooler_output
             ee = self.fc_ee(ee)
         elif self.base_model_type == BaseModelType.DECLUTR_BASE.name:
             sequence_output = self.entity_embedder(**entity_inputs)[0]
@@ -56,6 +61,9 @@ class BiEncoder(pl.LightningModule):
 
         if self.base_model_type == BaseModelType.BERT_BASE.name:
             me = self.mention_embedder(**mention_inputs).last_hidden_state[:, 0]
+            me = self.fc_me(me)
+        elif self.base_model_type == BaseModelType.ROBERTA_BASE.name:
+            me = self.mention_embedder(**mention_inputs).pooler_output
             me = self.fc_me(me)
         elif self.base_model_type == BaseModelType.DECLUTR_BASE.name:
             sequence_output = self.mention_embedder(**mention_inputs)[0]
