@@ -53,12 +53,7 @@ def embedd_entities(checkpoint_path: str, data_dir: str, batch_size: int, base_m
     model.eval()
     model.to(DEVICE)
 
-    if base_model_type == BaseModelType.BERT_BASE.name:
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
-    elif base_model_type == BaseModelType.DECLUTR_BASE.name:
-        tokenizer = AutoTokenizer.from_pretrained("johngiorgi/declutr-base")
-    else:
-        raise RuntimeError(f'Invalid base model type: {base_model_type}')
+    tokenizer = get_tokenizer(base_model_type)
 
     entities_dataset = ZeshelEntitiesDataset(data_dir,
                                              split=split,

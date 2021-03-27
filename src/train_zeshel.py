@@ -31,13 +31,16 @@ def train_zeshel(work_dir: str,
                              base_model_type=base_model_type)
     valset = ZeshelDataset(data_dir, split='val', tokenizer=tokenizer, device=DEVICE,
                            base_model_type=base_model_type)
+    print('Training examples:', len(trainset))
     print('Validation examples:', len(valset))
     valset = [valset[i] for i in range(100)]
     trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=12, shuffle=True)
     valloader = torch.utils.data.DataLoader(valset, batch_size=batch_size, num_workers=12, shuffle=True)
 
     accumulate_grad_batches = max(1, 128 // batch_size)
-    wandb_logger = WandbLogger(project='entity-linker')
+    wandb_logger = WandbLogger(
+        name=f'{base_model_type}_{datetime.now().strftime("%m_%d_%H%M_%S")}',
+        project='entity-linker')
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         mode='min',

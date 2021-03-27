@@ -80,7 +80,7 @@ class ZeshelDataset(Dataset):
         padding = [self.tokenizer.pad_token_id] * (self.tokenizer.model_max_length - len(input_ids))
 
         input_ids += padding
-        attention_mask += padding
+        attention_mask += [0] * len(padding)
 
         assert len(input_ids) <= 512
 
@@ -104,7 +104,7 @@ class ZeshelDataset(Dataset):
         padding = [self.tokenizer.pad_token_id] * (self.tokenizer.model_max_length - len(input_ids))
 
         input_ids += padding
-        attention_mask += padding
+        attention_mask += [0] * len(padding)
 
         assert len(input_ids) <= 512
 
