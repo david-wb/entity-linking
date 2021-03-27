@@ -43,7 +43,10 @@ class BiEncoder(pl.LightningModule):
             ee = self.entity_embedder(**entity_inputs).last_hidden_state[:, 0]
             ee = self.fc_ee(ee)
         elif self.base_model_type == BaseModelType.ROBERTA_BASE.name:
-            ee = self.entity_embedder(**entity_inputs).pooler_output
+            sequence_output = self.entity_embedder(**entity_inputs)[0]
+            ee = torch.sum(
+                sequence_output * entity_inputs["attention_mask"].unsqueeze(-1), dim=1
+            ) / torch.clamp(torch.sum(entity_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
             ee = self.fc_ee(ee)
         elif self.base_model_type == BaseModelType.DECLUTR_BASE.name:
             sequence_output = self.entity_embedder(**entity_inputs)[0]
@@ -63,7 +66,10 @@ class BiEncoder(pl.LightningModule):
             me = self.mention_embedder(**mention_inputs).last_hidden_state[:, 0]
             me = self.fc_me(me)
         elif self.base_model_type == BaseModelType.ROBERTA_BASE.name:
-            me = self.mention_embedder(**mention_inputs).pooler_output
+            sequence_output = self.mention_embedder(**mention_inputs)[0]
+            me = torch.sum(
+                sequence_output * mention_inputs["attention_mask"].unsqueeze(-1), dim=1
+            ) / torch.clamp(torch.sum(mention_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
             me = self.fc_me(me)
         elif self.base_model_type == BaseModelType.DECLUTR_BASE.name:
             sequence_output = self.mention_embedder(**mention_inputs)[0]

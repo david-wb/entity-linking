@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-base_model_type="DECLUTR_BASE"
+base_model_type="ROBERTA_BASE"
 
 project_id="bavard-test-293219"
 job_name="entity_linker_${base_model_type}_$(date +%m%d%H%M%S)"
