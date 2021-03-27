@@ -1,6 +1,18 @@
-# Entity Linking
+# Bi-Encoder Entity Linking
 
-This repo contains a basic system for performing named entity linking. The ML models are implemented in PyTorch.
+This repo implements a bi-encoder model for entity linking. The bi-encoder separately embeds mention and entity
+pairs into a shared vector space. The encoders in the bi-encoder model are pretrained transformers. 
+We evaluate three different base encoder models on the retrieval rate metric.
+The retrieval rate is the rate at which the correct entity for a mention is included when generating
+`k` candidates for each mention in the test set.
+The HuggingFace names of the three 
+base encoder models are:
+
+* `bert-base-uncased`
+* `roberta-base`
+* `johngiorgi/declutr-base`
+
+The ML models in this repo are implemented using PyTorch and PyTorch-Lightning.
 
 
 
@@ -31,3 +43,18 @@ This step will require at least 20gb of memory.
 ```python
 python -m src.transform_zeshel --input-dir="./zeshel"
 ```
+
+## Training
+To train on Google Cloud (GCP), you can edit `scripts/train-gcp.sh` with your own
+google cloud project and the run
+```bash
+./scripts/train-gcp.sh
+```
+to submit a training job.
+
+## Evaluation
+Similarly, edit `scripts/eval-gcp.sh` with your google cloud project id and run
+```bash
+./scripts/eval-gcp.sh
+```
+to submit the eval job.
