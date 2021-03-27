@@ -61,7 +61,7 @@ def embedd_entities(checkpoint_path: str, data_dir: str, batch_size: int, base_m
         raise RuntimeError(f'Invalid base model type: {base_model_type}')
 
     entities_dataset = ZeshelEntitiesDataset(data_dir,
-                                             split='val',
+                                             split=split,
                                              tokenizer=tokenizer,
                                              base_model_type=base_model_type)
 
