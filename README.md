@@ -1,6 +1,18 @@
-# Entity Linking
+# Bi-Encoder Entity Linking
 
-This repo contains a basic system for performing named entity linking. The ML models are implemented in PyTorch.
+This repo implements a bi-encoder model for entity linking. The bi-encoder separately embeds mention and entity
+pairs into a shared vector space. The encoders in the bi-encoder model are pretrained transformers. 
+We evaluate three different base encoder models on the retrieval rate metric.
+The retrieval rate is the rate at which the correct entity for a mention is included when generating
+`k` candidates for each mention in the test set.
+The HuggingFace names of the three 
+base encoder models are:
+
+* `bert-base-uncased`
+* `roberta-base`
+* `johngiorgi/declutr-base`
+
+The ML models in this repo are implemented using PyTorch and PyTorch-Lightning.
 
 
 
@@ -16,6 +28,17 @@ This repo contains a basic system for performing named entity linking. The ML mo
    ```bash
    pip install -r requirements.txt
    ```
+   
+# Data Description
+
+We use the Zeshel (zero-shot-entity-linking) dataset for training and evaluation.
+The Zeshel train/dev/test splits are completely non-overlapping have the following numbers:
+
+* Train: 49k labeled mentions
+* Val: 10k labeled mentions
+* Test: 7.5k labeled mentions
+
+The train, val/test sets share any entities at all between them.
 
 # Get the data
 
@@ -31,3 +54,32 @@ This step will require at least 20gb of memory.
 ```python
 python -m src.transform_zeshel --input-dir="./zeshel"
 ```
+
+## Training
+To train on Google Cloud Platform (GCP), you must first build and push the training and
+evaluation docker image
+to your google cloud project. To do this edit `scripts/build-images.sh` with your own info.
+
+Next, you can edit `scripts/train-gcp.sh` with your own
+google cloud project and then run
+```bash
+./scripts/train-gcp.sh
+```
+to submit a training job.
+
+## Evaluation
+Similarly, edit `scripts/eval-gcp.sh` with your google cloud project id and run
+```bash
+./scripts/eval-gcp.sh
+```
+to submit the eval job.
+
+## Results
+
+We find the using DeCLUTR embedding model (which is based on roberta) significantly outperforms
+both `roberta-base` and `bert-base-uncased` on the entity linking task. With DeCLUTR
+we achieved a retrieval-rate at `k=64` of `~85%`.
+
+The validation loss curves for the three base model types are shown below.
+
+![validation loss image](./static/val_loss.png?raw=true)

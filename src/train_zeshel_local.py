@@ -1,16 +1,54 @@
 import os
 import sys
+from argparse import ArgumentParser
 
 from loguru import logger
 
-from src.args import parse_zeshel_train_args
 from src.train_zeshel import train_zeshel
 
 
+def parse_cli_args():
+    args = sys.argv[1:]
+
+    parser = ArgumentParser()
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="test",
+        help="The file path (local or GCS) to zeshel.tar.bz2."
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=8
+    )
+    parser.add_argument(
+        "--val-check-interval",
+        type=int,
+        default=100
+    )
+    parser.add_argument(
+        "--limit-train-batches",
+        type=int,
+        default=None
+    )
+    parser.add_argument(
+        "--max-epochs",
+        type=int,
+        default=1
+    )
+    parser.add_argument(
+        "--base-model-type",
+        type=str,
+        choices=['BERT_BASE', 'ROBERTA_BASE', 'DECLUTR_BASE'],
+        required=True
+    )
+    parsed_args = parser.parse_args(args)
+    return parsed_args
+
+
 def main():
-    """Train/fine tune a response generator on the EmpatheticDialogues dataset. Expects GPU to be available.
-    """
-    args = parse_zeshel_train_args(sys.argv[1:])
+    args = parse_cli_args()
 
     work_dir = os.getcwd()
 
@@ -24,7 +62,8 @@ def main():
                  batch_size=args.batch_size,
                  val_check_interval=args.val_check_interval,
                  limit_train_batches=args.limit_train_batches if args.limit_train_batches else 1.0,
-                 max_epochs=args.max_epochs)
+                 max_epochs=args.max_epochs,
+                 base_model_type=args.base_model_type)
 
 
 def ensure_dir(file_path):

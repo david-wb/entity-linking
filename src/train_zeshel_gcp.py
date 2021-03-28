@@ -47,13 +47,17 @@ def parse_cli_args():
         type=int,
         default=1
     )
+    parser.add_argument(
+        "--base-model-type",
+        type=str,
+        choices=['BERT_BASE', 'ROBERTA_BASE', 'DECLUTR_BASE'],
+        required=True
+    )
     parsed_args = parser.parse_args(args)
     return parsed_args
 
 
 def main():
-    """Train/fine tune a response generator on the EmpatheticDialogues dataset. Expects GPU to be available.
-    """
     args = parse_cli_args()
 
     work_dir = os.path.join(os.getcwd(), str(uuid4()))
@@ -86,7 +90,8 @@ def main():
                  batch_size=args.batch_size,
                  val_check_interval=args.val_check_interval,
                  limit_train_batches=args.limit_train_batches,
-                 max_epochs=args.max_epochs)
+                 max_epochs=args.max_epochs,
+                 base_model_type=args.base_model_type)
     logger.info(f"Training complete.")
     logger.info(f"Uploading checkpoints dir to GCS.")
 

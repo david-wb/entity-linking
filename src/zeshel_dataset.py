@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
 from src.constants import MENTION_START_TAG, MENTION_END_TAG
+from src.enums import BaseModelType
 
 
 class ZeshelDataset(Dataset):
@@ -17,6 +18,7 @@ class ZeshelDataset(Dataset):
                  zeshel_home: str,
                  split: str,
                  tokenizer: PreTrainedTokenizer,
+                 base_model_type: str,
                  context_size=32,
                  transform=None,
                  device='cpu'):
@@ -26,12 +28,24 @@ class ZeshelDataset(Dataset):
             split (string): train, val, or test.
             context_size (int): Number of words to keep on the left and right of the mention.
         """
+        self.base_model_type = base_model_type
         self.zeshel_home = zeshel_home
         self.transform = transform
         self.context_size = context_size
         self.device = device
         zeshel_file = os.path.join(zeshel_home, f'mentions_{split}.json')
         self.tokenizer = tokenizer
+
+        if base_model_type == BaseModelType.BERT_BASE.name:
+            self.mention_start_tag = MENTION_START_TAG
+            self.mention_end_tag = MENTION_END_TAG
+            self.classification_token = '[CLS]'
+            self.sep_token = '[SEP]'
+        else:
+            self.mention_start_tag = '|'
+            self.mention_end_tag = '|'
+            self.classification_token = '<s>'
+            self.sep_token = '</s>'
 
         with open(zeshel_file) as f:
             self.mentions: List[Dict] = list(json.load(f).values())
@@ -51,7 +65,7 @@ class ZeshelDataset(Dataset):
         mention_text = mention['text'].lower()
         words = mention['source_document']['text'].lower().split()
 
-        mention_tokens = [MENTION_START_TAG] + self.tokenizer.tokenize(mention_text) + [MENTION_END_TAG]
+        mention_tokens = [self.mention_start_tag] + self.tokenizer.tokenize(mention_text) + [self.mention_end_tag]
         left_tokens = self.tokenizer.tokenize(' '.join(words[:start_i]))
         right_tokens = self.tokenizer.tokenize(' '.join(words[end_i + 1:]))
 
@@ -59,21 +73,20 @@ class ZeshelDataset(Dataset):
         keep_right = (self.context_size - 2 - keep_left - len(mention_tokens))
         ctx_tokens = left_tokens[-keep_left:] + mention_tokens + right_tokens[:keep_right]
         ctx_tokens = ctx_tokens[:self.tokenizer.model_max_length - 2]
-        ctx_tokens = ['[CLS]'] + ctx_tokens + ['[SEP]']
+        ctx_tokens = [self.classification_token] + ctx_tokens + [self.sep_token]
 
         input_ids = self.tokenizer.convert_tokens_to_ids(ctx_tokens)
         attention_mask = [1] * len(input_ids)
-        token_type_ids = [0] * len(input_ids)
-        padding = [0] * (self.tokenizer.model_max_length - len(input_ids))
+        padding = [self.tokenizer.pad_token_id] * (self.tokenizer.model_max_length - len(input_ids))
 
         input_ids += padding
-        attention_mask += padding
-        token_type_ids += padding
+        attention_mask += [0] * len(padding)
+
+        assert len(input_ids) <= 512
 
         inputs = {
             'input_ids': torch.LongTensor(input_ids),
             'attention_mask': torch.LongTensor(attention_mask),
-            'token_type_ids': torch.LongTensor(token_type_ids),
         }
         return inputs
 
@@ -83,22 +96,21 @@ class ZeshelDataset(Dataset):
 
         title_tokens = self.tokenizer.tokenize(title)
         text_tokens = self.tokenizer.tokenize(text)
-        tokens = title_tokens + ['unused2'] + text_tokens
-        tokens = tokens[:self.tokenizer.model_max_length]
+        tokens = title_tokens + ['|'] + text_tokens
+        tokens = [self.classification_token] + tokens[:self.tokenizer.model_max_length - 2] + [self.sep_token]
 
         input_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         attention_mask = [1] * len(input_ids)
-        token_type_ids = [0] * len(input_ids)
-        padding = [0] * (self.tokenizer.model_max_length - len(input_ids))
+        padding = [self.tokenizer.pad_token_id] * (self.tokenizer.model_max_length - len(input_ids))
 
         input_ids += padding
-        attention_mask += padding
-        token_type_ids += padding
+        attention_mask += [0] * len(padding)
+
+        assert len(input_ids) <= 512
 
         inputs = {
             'input_ids': torch.LongTensor(input_ids),
             'attention_mask': torch.LongTensor(attention_mask),
-            'token_type_ids': torch.LongTensor(token_type_ids),
         }
         return inputs
 
@@ -114,4 +126,3 @@ class ZeshelDataset(Dataset):
             'mention_inputs': mention_inputs,
             'entity_inputs': entity_inputs,
         }
-
