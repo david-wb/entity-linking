@@ -28,6 +28,17 @@ The ML models in this repo are implemented using PyTorch and PyTorch-Lightning.
    ```bash
    pip install -r requirements.txt
    ```
+   
+# Data Description
+
+We use the Zeshel (zero-shot-entity-linking) dataset for training and evaluation.
+The Zeshel train/dev/test splits are completely non-overlapping have the following numbers:
+
+* Train: 49k labeled mentions
+* Val: 10k labeled mentions
+* Test: 7.5k labeled mentions
+
+The train, val/test sets share any entities at all between them.
 
 # Get the data
 
@@ -45,8 +56,12 @@ python -m src.transform_zeshel --input-dir="./zeshel"
 ```
 
 ## Training
-To train on Google Cloud (GCP), you can edit `scripts/train-gcp.sh` with your own
-google cloud project and the run
+To train on Google Cloud Platform (GCP), you must first build and push the training and
+evaluation docker image
+to your google cloud project. To do this edit `scripts/build-images.sh` with your own info.
+
+Next, you can edit `scripts/train-gcp.sh` with your own
+google cloud project and then run
 ```bash
 ./scripts/train-gcp.sh
 ```
@@ -58,3 +73,5 @@ Similarly, edit `scripts/eval-gcp.sh` with your google cloud project id and run
 ./scripts/eval-gcp.sh
 ```
 to submit the eval job.
+
+## Results
