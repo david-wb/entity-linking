@@ -6,11 +6,9 @@ import torch
 from loguru import logger
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import BertTokenizer, AutoTokenizer
 
 from src.bi_encoder import BiEncoder
 from src.config import DEVICE
-from src.enums import BaseModelType
 from src.tokenization import get_tokenizer
 from src.zeshel_dataset import ZeshelDataset
 from src.zeshel_entities_dataset import ZeshelEntitiesDataset
