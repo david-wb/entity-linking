@@ -11,3 +11,4 @@ checkpoints/
 wandb/
 *.npy
 *.profraw
+*.zip
