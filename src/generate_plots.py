@@ -37,7 +37,7 @@ plt.xticks(index + bar_width, ('k = 1', 'k = 16', 'k = 32', 'k = 64'))
 plt.legend()
 plt.ylim(0, 1)
 plt.tight_layout()
-plot_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../static/retrieval_rates_bar_chart.svg')
+plot_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../static/retrieval_rates_bar_chart.png')
 if os.path.isfile(plot_file_path):
    os.remove(plot_file_path)
 plt.savefig(plot_file_path)
