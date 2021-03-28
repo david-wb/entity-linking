@@ -75,3 +75,7 @@ Similarly, edit `scripts/eval-gcp.sh` with your google cloud project id and run
 to submit the eval job.
 
 ## Results
+
+We find the using DeCLUTR embedding model (which is based on roberta) significantly outperforms
+both `roberta-base` and `bert-base-uncased` on the entity linking task. With DeCLUTR
+we achieved a retrieval-rate at `k=64` of `~85%`.
