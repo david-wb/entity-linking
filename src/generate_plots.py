@@ -3,9 +3,9 @@ import numpy as np
 
 # data to plot
 n_groups = 4
-retrieval_rate_bert = (1, 10, 40, 60)
-retrieval_rate_roberta = (1.5, 15, 45, 65)
-retrieval_rate_declutr = (2, 20, 50, 80)
+retrieval_rate_bert = (0.1133, 0.4245, 0.5283, 0.6354)
+retrieval_rate_roberta = (0.1551, 0.47, 0.5614, 0.6613)
+retrieval_rate_declutr = (0.2082, 0.5343, 0.6139, 0.6923)
 
 # create plot
 fig, ax = plt.subplots()
