@@ -32,11 +32,11 @@ The ML models in this repo are implemented using PyTorch and PyTorch-Lightning.
 # Data Description
 
 We use the Zeshel (zero-shot-entity-linking) dataset for training and evaluation.
-The Zeshel train/dev/test splits are completely non-overlapping have the following numbers:
+The Zeshel train/dev/test splits are completely non-overlapping and have the following numbers:
 
-* Train: 49k labeled mentions
-* Val: 10k labeled mentions
-* Test: 7.5k labeled mentions
+* **Train**: 49275 labeled mentions covering 31502 entities 
+* **Val**: 10000 labeled mentions covering 7513 entities
+* **Test**: 10000 labeled mentions covering 7218 entities
 
 The train, val/test sets share any entities at all between them.
 
