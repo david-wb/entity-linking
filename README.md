@@ -78,7 +78,8 @@ to submit the eval job.
 
 We find the using DeCLUTR embedding model (which is based on roberta) significantly outperforms
 both `roberta-base` and `bert-base-uncased` on the entity linking task. With DeCLUTR
-we achieved a retrieval-rate at `k=64` of `~85%`.
+we achieved a retrieval-rate at `k=64` of `~69%`. Note that this score 
+is measured on a test set of completely unseen entities.
 
 The validation loss curves and retrieval rates for the three base model types are shown below.
 
