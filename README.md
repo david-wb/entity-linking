@@ -39,7 +39,7 @@ The Zeshel train/dev/test splits are completely non-overlapping and have the fol
 * **Val**: 10000 labeled mentions covering 7513 entities
 * **Test**: 10000 labeled mentions covering 7218 entities
 
-The train, val/test sets share any entities at all between them.
+The train, val, and test sets do not share any entities at all between them.
 
 # Get the data
 
