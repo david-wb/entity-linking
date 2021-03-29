@@ -14,7 +14,8 @@ base encoder models are:
 
 The ML models in this repo are implemented using PyTorch and PyTorch-Lightning.
 
-
+# Bi-Encoder Model Illustration
+![bi-encoder model](./static/Bi-Encoder.png?raw=true)
 
 # Setup
 
