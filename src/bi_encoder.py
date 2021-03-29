@@ -33,27 +33,21 @@ class BiEncoder(pl.LightningModule):
         else:
             raise RuntimeError(f'Invalid base model type: {base_model_type}')
 
-        self.fc_me = nn.Linear(768, 128)
-        self.fc_ee = nn.Linear(768, 128)
-
     def get_entity_embeddings(self, entity_inputs):
         entity_inputs = {k: v.to(self.device) for k, v in entity_inputs.items()}
 
         if self.base_model_type == BaseModelType.BERT_BASE.name:
             ee = self.entity_embedder(**entity_inputs).last_hidden_state[:, 0]
-            ee = self.fc_ee(ee)
         elif self.base_model_type == BaseModelType.ROBERTA_BASE.name:
             sequence_output = self.entity_embedder(**entity_inputs)[0]
             ee = torch.sum(
                 sequence_output * entity_inputs["attention_mask"].unsqueeze(-1), dim=1
             ) / torch.clamp(torch.sum(entity_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
-            ee = self.fc_ee(ee)
         elif self.base_model_type == BaseModelType.DECLUTR_BASE.name:
             sequence_output = self.entity_embedder(**entity_inputs)[0]
             ee = torch.sum(
                 sequence_output * entity_inputs["attention_mask"].unsqueeze(-1), dim=1
             ) / torch.clamp(torch.sum(entity_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
-            ee = self.fc_ee(ee)
         else:
             raise RuntimeError(f'Invalid base model type: {self.base_model_type}')
 
@@ -64,19 +58,16 @@ class BiEncoder(pl.LightningModule):
 
         if self.base_model_type == BaseModelType.BERT_BASE.name:
             me = self.mention_embedder(**mention_inputs).last_hidden_state[:, 0]
-            me = self.fc_me(me)
         elif self.base_model_type == BaseModelType.ROBERTA_BASE.name:
             sequence_output = self.mention_embedder(**mention_inputs)[0]
             me = torch.sum(
                 sequence_output * mention_inputs["attention_mask"].unsqueeze(-1), dim=1
             ) / torch.clamp(torch.sum(mention_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
-            me = self.fc_me(me)
         elif self.base_model_type == BaseModelType.DECLUTR_BASE.name:
             sequence_output = self.mention_embedder(**mention_inputs)[0]
             me = torch.sum(
                 sequence_output * mention_inputs["attention_mask"].unsqueeze(-1), dim=1
             ) / torch.clamp(torch.sum(mention_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
-            me = self.fc_me(me)
         else:
             raise RuntimeError(f'Invalid base model type: {self.base_model_type}')
 

@@ -3,9 +3,9 @@ from unittest import TestCase
 
 import torch
 from torch.utils.data import DataLoader
-from transformers import BertTokenizer
 
 from src.bi_encoder import BiEncoder
+from src.tokenization import get_tokenizer
 from src.zeshel_dataset import ZeshelDataset
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -13,15 +13,16 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 
 class TestBiEncoder(TestCase):
     def setUp(self):
-        self.model = BiEncoder()
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
-        self.dataset = ZeshelDataset(os.path.join(dir_path, 'data'), split='train', tokenizer=self.tokenizer)
+        self.model = BiEncoder(base_model_type='BERT_BASE')
+        self.tokenizer = get_tokenizer('BERT_BASE')
+        self.dataset = ZeshelDataset(os.path.join(dir_path, 'data'), split='train', tokenizer=self.tokenizer,
+                                     base_model_type='BERT_BASE')
         self.loader = DataLoader(self.dataset, batch_size=1)
 
     def test_len(self):
         input = list(self.loader)[0]
         out = self.model(**input)
-        self.assertEqual(out[0].detach().numpy().shape[-1], 128)
+        self.assertEqual(out[0].detach().numpy().shape[-1], 768)
 
     def test_train_bi_encoder(self):
         learning_rate = 1e-4
