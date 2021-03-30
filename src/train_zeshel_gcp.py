@@ -35,7 +35,7 @@ def parse_cli_args():
     parser.add_argument(
         "--val-check-interval",
         type=int,
-        default=100
+        default=300
     )
     parser.add_argument(
         "--limit-train-batches",

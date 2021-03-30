@@ -33,7 +33,7 @@ def train_zeshel(work_dir: str,
                            base_model_type=base_model_type)
     print('Training examples:', len(trainset))
     print('Validation examples:', len(valset))
-    valset = [valset[i] for i in range(100)]
+    valset = [valset[i] for i in range(500)]
     trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=12, shuffle=True)
     valloader = torch.utils.data.DataLoader(valset, batch_size=batch_size, num_workers=12, shuffle=True)
 
@@ -47,7 +47,7 @@ def train_zeshel(work_dir: str,
         save_top_k=2,
         verbose=True,
         dirpath=os.path.join(work_dir, f'checkpoints'),
-        filename='{epoch}-{val_loss:.3f}' + f'_{base_model_type}_{datetime.now().strftime("%m_%d_%H%M_%S")}'
+        filename='{epoch}-{val_loss:.6f}' + f'_{base_model_type}_{datetime.now().strftime("%m_%d_%H%M_%S")}'
     )
     trainer = pl.Trainer(
         gpus=-1 if DEVICE != 'cpu' else 0,

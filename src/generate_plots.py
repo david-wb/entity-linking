@@ -5,9 +5,9 @@ import numpy as np
 
 # data to plot
 n_groups = 4
-retrieval_rate_bert = (0.1133, 0.4245, 0.5283, 0.6354)
-retrieval_rate_roberta = (0.1551, 0.47, 0.5614, 0.6613)
-retrieval_rate_declutr = (0.2082, 0.5343, 0.6139, 0.6923)
+retrieval_rate_bert = (0.4992, 0.7839, 0.8262, 0.8643)
+retrieval_rate_roberta = (0.4401, 0.7413, 0.7903, 0.8423)
+retrieval_rate_declutr = (0.4606, 0.771, 0.8172, 0.8587)
 
 # create plot
 fig, ax = plt.subplots()

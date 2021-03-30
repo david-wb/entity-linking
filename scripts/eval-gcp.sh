@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-base_model_type="DECLUTR_BASE"
+base_model_type="BERT_BASE"
 
 project_id="bavard-test-293219"
 job_name="entity_linker_eval_${base_model_type}_$(date +%m%d%H%M%S)"
@@ -19,7 +19,7 @@ gcloud ai-platform jobs submit training "$job_name" \
   --master-accelerator count=1,type=nvidia-tesla-t4 \
   -- \
   --data-file "gs://bavard-test-datasets/bavard/zeshel.tar.bz2" \
-  --checkpoint-path "gs://bavard-test-datasets/entity_linker_model/epoch=4-val_loss=0.014_DECLUTR_BASE_03_27_2106_58.ckpt" \
+  --checkpoint-path "gs://bavard-test-datasets/entity_linker_model/epoch=4-val_loss=0.001_BERT_BASE_03_29_1957_29-v1.ckpt" \
   --base-model-type="${base_model_type}"
 
 echo "kicked off training job ${job_name}"
