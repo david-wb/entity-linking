@@ -12,3 +12,4 @@ wandb/
 *.npy
 *.profraw
 *.zip
+zeshel_transformed_e2e/
