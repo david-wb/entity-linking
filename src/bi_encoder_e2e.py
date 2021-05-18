@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from torch import nn, Tensor
 from transformers import DistilBertModel, AdamW
 
+from src.span_utils import batched_span_select
+
 
 class BiEncoderE2E(pl.LightningModule):
     def __init__(self):
@@ -113,9 +115,10 @@ class BiEncoderE2E(pl.LightningModule):
         # (bs, seqlen * seqlen)
         mention_scores = mention_scores.view(bs, -1)
 
-        # (bs, seqlen * seqlen, 2)
+        # (seqlen * seqlen, 2)
         mention_bounds = mention_bounds.view(-1, 2)
-        mention_bounds = mention_bounds.unsqueeze(0).expand(bs, seqlen, 2)
+        # (bs, seqlen * seqlen, 2)
+        mention_bounds = mention_bounds.unsqueeze(0).expand(bs, seqlen * seqlen, 2)
 
         return mention_scores, mention_bounds
 
@@ -147,3 +150,29 @@ class BiEncoderE2E(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = AdamW(self.parameters(), lr=2e-5)
         return optimizer
+
+
+class ContextEncoderHead(nn.Module):
+    def __init__(self):
+        super(ContextEncoderHead, self).__init__()
+
+    def forward(self, bert_output, mention_bounds):
+        """
+        bert_output
+            (bs, seqlen, embed_dim)
+        mention_bounds: both bounds are inclusive [start, end]
+            (bs, num_spans, 2)
+        """
+        (
+            embedding_ctxt,  # (batch_size, num_spans, max_batch_span_width, embedding_size)
+            mask,  # (batch_size, num_spans, max_batch_span_width)
+        ) = batched_span_select(
+            bert_output,  # (batch_size, sequence_length, embedding_size)
+            mention_bounds,  # (batch_size, num_spans, 2)
+        )
+        embedding_ctxt[~mask] = 0  # 0 out masked elements
+        # embedding_ctxt = (batch_size, num_spans, max_batch_span_width, embedding_size)
+        embedding_ctxt = embedding_ctxt.sum(2) / mask.sum(2).float().unsqueeze(-1)
+        # embedding_ctxt = (batch_size, num_spans, embedding_size)
+
+        return embedding_ctxt
