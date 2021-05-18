@@ -1,3 +1,4 @@
+from abc import ABC
 from typing import Dict
 
 import pytorch_lightning as pl
@@ -7,49 +8,188 @@ from torch import nn, Tensor
 from transformers import DistilBertModel, AdamW
 
 from src.span_utils import batched_span_select
+from src.utils import batch_reshape_mask_left
 
 
 class BiEncoderE2E(pl.LightningModule):
     def __init__(self):
         super(BiEncoderE2E, self).__init__()
 
-        self.context_embedder = DistilBertModel.from_pretrained('distilbert-base-uncased')
-        # Entity embedder
-        self.entity_embedder = DistilBertModel.from_pretrained('distilbert-base-uncased')
+        self.context_encoder = DistilBertModel.from_pretrained('distilbert-base-uncased')
+        self.mention_detector_head = MentionDetectorHead()
+        self.mention_encoder_head = MentionSpanEncoderHead()
+        self.entity_encoder = DistilBertModel.from_pretrained('distilbert-base-uncased')
 
-        self.fc_me = nn.Linear(768, 128)
-        self.fc_ee = nn.Linear(768, 128)
-
-        # mention detection params
-        self.fc_mention = torch.nn.Linear(768, 3)  # mention scores for start, end, and middle.
-
-    def get_entity_embeddings(self, entity_inputs):
-        entity_inputs = {k: v.to(self.device) for k, v in entity_inputs.items()}
-        ee = self.entity_embedder(**entity_inputs).last_hidden_state[:, 0]
-        ee = self.fc_ee(ee)
+    def get_entity_embeddings(self, input_ids, attention_mask):
+        bs = input_ids.shape[0]
+        ee = self.entity_encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state[:, 0]
+        assert ee.shape == torch.Size([bs, 768])
         return ee
 
-    def get_mention_embeddings(self, mention_inputs):
-        mention_inputs: Dict[str, Tensor] = {k: v.to(self.device) for k, v in mention_inputs.items()}
-        me = self.mention_embedder(**mention_inputs).last_hidden_state[:, 0]
-        me = self.fc_me(me)
+    def get_context_embeddings(self, input_ids, attention_mask):
+        bs, seqlen = input_ids.shape
+        me = self.context_encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state
+        assert me.shape == torch.Size([bs, seqlen, 768])
         return me
 
-    def forward(self, inputs, **kwargs):
-        context_mask = inputs['context_attention_mask']
+    def forward(self,
+                context_ids,
+                context_mask,
+                entity_ids,
+                entity_mask,
+                **kwargs):
 
-        context_embs = self.context_embedder(
-            input_ids=inputs['context_ids'],
-            attention_mask=context_mask
-        ).last_hidden_state  # (bs, seqlen, embsize)
+        # (bs, seqlen, embed_dim)
+        context_embs = self.get_context_embeddings(context_ids, context_mask)
 
-        (bs, seqlen, embsize) = context_embs.shape
+        # (bs, embed_dim)
+        entity_embs = self.get_entity_embeddings(entity_ids, entity_mask)
+
+        mention_scores, mention_bounds = self.mention_detector_head(context_embs, context_mask)
+
+    def forward_context(
+            self,
+            context_ids,
+            context_mask,
+            true_mention_bounds=None,
+            true_mention_bounds_mask=None,
+            num_cand_mentions=50,
+            topk_threshold=-4.5
+    ):
+        """
+        If true_mention_bounds is set, returns mention embeddings of passed-in mention bounds
+        Otherwise, uses top-scoring mentions
+        """
+
+        # (bs, seqlen, embed_size)
+        context_embs = self.get_context_embeddings(context_ids, context_mask)
+        mention_scores, mention_bounds = self.mention_detector_head(context_embs, context_mask)
+
+        top_mention_bounds = None
+        top_mention_logits = None
+
+        extra_rets = {}
+        if true_mention_bounds is None:
+            (
+                top_mention_logits, top_mention_bounds, top_mention_mask, all_mention_mask,
+            ) = self.prune_predicted_mentions(mention_scores, mention_bounds, num_cand_mentions, topk_threshold)
+            extra_rets['mention_logits'] = top_mention_logits.view(-1)
+            extra_rets['all_mention_mask'] = all_mention_mask
+
+        if top_mention_bounds is None:
+            # use true mention
+            top_mention_bounds = true_mention_bounds
+            top_mention_mask = true_mention_bounds_mask
+
+        assert top_mention_bounds is not None
+        assert top_mention_mask is not None
+
+        # (bs, num_pred_mentions OR num_true_mentions, embed_size)
+        mention_embs = self.get_men(
+            context_embs, top_mention_bounds,
+        )
+        # for merging dataparallel, only 1st dimension can differ...
+        return {
+            "mention_embs": mention_embs,
+            "mention_bounds": top_mention_bounds,
+            "mention_masks": top_mention_mask,
+            "mention_dims": torch.tensor(top_mention_mask.size()).unsqueeze(0).to(mention_embs.device),
+            **extra_rets
+        }
+
+    def prune_predicted_mentions(self,
+                                 mention_scores,
+                                 mention_bounds,
+                                 num_cand_mentions,
+                                 threshold):
+        '''
+            Prunes mentions based on mention scores/logits (by either
+            `threshold` or `num_cand_mentions`, whichever yields less candidates)
+        Inputs:
+            mention_logits: torch.FloatTensor (bsz, num_total_mentions)
+            mention_bounds: torch.IntTensor (bsz, num_total_mentions)
+            num_cand_mentions: int
+            threshold: float
+        Returns:
+            torch.FloatTensor(bsz, max_num_pred_mentions): top mention scores/logits
+            torch.IntTensor(bsz, max_num_pred_mentions, 2): top mention boundaries
+            torch.BoolTensor(bsz, max_num_pred_mentions): mask on top mentions
+            torch.BoolTensor(bsz, total_possible_mentions): mask for reshaping from total possible mentions -> max # pred mentions
+        '''
+        # (bsz, num_cand_mentions); (bsz, num_cand_mentions)
+        top_mention_logits, mention_pos = mention_scores.topk(num_cand_mentions, sorted=True)
+        # (bsz, num_cand_mentions, 2)
+        #   [:,:,0]: index of batch
+        #   [:,:,1]: index into top mention in mention_bounds
+        mention_pos = torch.stack(
+            [torch.arange(mention_pos.size(0)).to(mention_pos.device).unsqueeze(-1).expand_as(mention_pos),
+             mention_pos], dim=-1)
+        # (bsz, num_cand_mentions)
+        top_mention_pos_mask = torch.sigmoid(top_mention_logits).log() > threshold
+        # (total_possible_mentions, 2)
+        #   tuples of [index of batch, index into mention_bounds] of what mentions to include
+        mention_pos = mention_pos[top_mention_pos_mask | (
+            # 2nd part of OR: if nothing is > threshold, use topK that are > -inf
+                ((top_mention_pos_mask.sum(1) == 0).unsqueeze(-1)) & (top_mention_logits > -float("inf"))
+        )]
+        mention_pos = mention_pos.view(-1, 2)
+        # (bsz, total_possible_mentions)
+        #   mask of possible logits
+        mention_pos_mask = torch.zeros(mention_scores.size(), dtype=torch.bool).to(mention_pos.device)
+        mention_pos_mask[mention_pos[:, 0], mention_pos[:, 1]] = 1
+        # (bsz, max_num_pred_mentions, 2)
+        chosen_mention_bounds, chosen_mention_mask = batch_reshape_mask_left(mention_bounds, mention_pos_mask,
+                                                                             pad_idx=0)
+        # (bsz, max_num_pred_mentions)
+        chosen_mention_logits, _ = batch_reshape_mask_left(mention_logits, mention_pos_mask, pad_idx=-float("inf"),
+                                                           left_align_mask=chosen_mention_mask)
+        return chosen_mention_logits, chosen_mention_bounds, chosen_mention_mask, mention_pos_mask
+
+    def training_step(self, batch, batch_idx):
+        me, ee = self.forward(**batch)
+        scores = me.mm(ee.t())
+
+        bs = ee.size(0)
+        target = torch.LongTensor(torch.arange(bs))
+        target = target.to(self.device)
+        loss = F.cross_entropy(scores, target, reduction="mean")
+        self.log('train_loss', loss, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        me, ee = self.forward(**batch)
+        scores = me.mm(ee.t())
+
+        bs = ee.size(0)
+        target = torch.LongTensor(torch.arange(bs))
+        target = target.to(self.device)
+        loss = F.cross_entropy(scores, target, reduction="mean")
+        return {'val_loss': loss}
+
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+        self.log('val_loss', avg_loss, prog_bar=True)
+
+    def configure_optimizers(self):
+        optimizer = AdamW(self.parameters(), lr=2e-5)
+        return optimizer
+
+
+class MentionDetectorHead(pl.LightningModule):
+    def __init__(self):
+        super(MentionDetectorHead, self).__init__()
+
+        # mention scores for start, end, and middle.
+        self.fc_mention = torch.nn.Linear(768, 3)
+
+    def forward(self, bert_output: torch.Tensor, context_mask):
+        (bs, seqlen, embed_dim) = bert_output.shape
 
         # (bs, seqlen, 3)
-        mention_bounds_logits = self.fc_mention(context_embs)
+        mention_bounds_logits = self.fc_mention(bert_output)
         assert mention_bounds_logits.shape == torch.Size([bs, seqlen, 3])
 
-        # (bs, seqlen, 1); (bs, seqlen, 1); (bs, seqlen, 1)
+        # (bs, seqlen, 1), (bs, seqlen, 1), (bs, seqlen, 1)
         starts, ends, middles = mention_bounds_logits.split(1, dim=-1)
 
         # (bs, seqlen)
@@ -57,7 +197,7 @@ class BiEncoderE2E(pl.LightningModule):
         ends = ends.squeeze(-1)
         middles = middles.squeeze(-1)
 
-        # impossible to choose masked tokens as starts/ends of spans
+        # Mask out invalid mention positions. (Causes them to have zero probability)
         starts[~context_mask] = -float("Inf")
         ends[~context_mask] = -float("Inf")
         middles[~context_mask] = -float("Inf")
@@ -122,41 +262,15 @@ class BiEncoderE2E(pl.LightningModule):
 
         return mention_scores, mention_bounds
 
-    def training_step(self, batch, batch_idx):
-        me, ee = self.forward(**batch)
-        scores = me.mm(ee.t())
 
-        bs = ee.size(0)
-        target = torch.LongTensor(torch.arange(bs))
-        target = target.to(self.device)
-        loss = F.cross_entropy(scores, target, reduction="mean")
-        self.log('train_loss', loss, prog_bar=True)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        me, ee = self.forward(**batch)
-        scores = me.mm(ee.t())
-
-        bs = ee.size(0)
-        target = torch.LongTensor(torch.arange(bs))
-        target = target.to(self.device)
-        loss = F.cross_entropy(scores, target, reduction="mean")
-        return {'val_loss': loss}
-
-    def validation_epoch_end(self, outputs):
-        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        self.log('val_loss', avg_loss, prog_bar=True)
-
-    def configure_optimizers(self):
-        optimizer = AdamW(self.parameters(), lr=2e-5)
-        return optimizer
-
-
-class ContextEncoderHead(nn.Module):
+class MentionSpanEncoderHead(nn.Module, ABC):
+    """
+    Computes the average embedding for each span of tokens.
+    """
     def __init__(self):
-        super(ContextEncoderHead, self).__init__()
+        super(MentionSpanEncoderHead, self).__init__()
 
-    def forward(self, bert_output, mention_bounds):
+    def forward(self, bert_output: torch.Tensor, mention_bounds: torch.LongTensor):
         """
         bert_output
             (bs, seqlen, embed_dim)
@@ -164,15 +278,15 @@ class ContextEncoderHead(nn.Module):
             (bs, num_spans, 2)
         """
         (
-            embedding_ctxt,  # (batch_size, num_spans, max_batch_span_width, embedding_size)
-            mask,  # (batch_size, num_spans, max_batch_span_width)
+            embedding_ctxt,  # (bs, num_spans, max_batch_span_width, embed_dim)
+            mask,  # (bs, num_spans, max_batch_span_width)
         ) = batched_span_select(
-            bert_output,  # (batch_size, sequence_length, embedding_size)
-            mention_bounds,  # (batch_size, num_spans, 2)
+            bert_output,  # (bs, sequence_length, embed_dim)
+            mention_bounds,  # (bs, num_spans, 2)
         )
         embedding_ctxt[~mask] = 0  # 0 out masked elements
-        # embedding_ctxt = (batch_size, num_spans, max_batch_span_width, embedding_size)
+        # embedding_ctxt = (bs, num_spans, max_batch_span_width, embed_dim)
         embedding_ctxt = embedding_ctxt.sum(2) / mask.sum(2).float().unsqueeze(-1)
-        # embedding_ctxt = (batch_size, num_spans, embedding_size)
+        # embedding_ctxt = (bs, num_spans, embed_dim)
 
         return embedding_ctxt
