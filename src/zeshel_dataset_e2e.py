@@ -127,7 +127,7 @@ class ZeshelDatasetE2E(Dataset):
         return inputs
 
 
-def zeshel_e2d_collate_fn(batch):
+def zeshel_e2e_collate_fn(batch):
     context_ids = torch.LongTensor([x['context_ids'] for x in batch])
     context_attention_mask = torch.LongTensor([x['context_attention_mask'] for x in batch])
     mention_starts = torch.LongTensor([x['starts'] for x in batch])

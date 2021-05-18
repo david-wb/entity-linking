@@ -4,97 +4,120 @@ import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
-from transformers import BertModel, AdamW, AutoModel, RobertaModel
-
-from src.enums import BaseModelType
+from transformers import DistilBertModel, AdamW
 
 
 class BiEncoderE2E(pl.LightningModule):
-    def __init__(self, base_model_type: str):
+    def __init__(self):
         super(BiEncoderE2E, self).__init__()
 
-        self.base_model_type = base_model_type
-
-        if base_model_type == BaseModelType.BERT_BASE.name:
-            # Mention embedder
-            self.mention_embedder = BertModel.from_pretrained('bert-base-uncased')
-            # Entity embedder
-            self.entity_embedder = BertModel.from_pretrained('bert-base-uncased')
-        elif base_model_type == BaseModelType.ROBERTA_BASE.name:
-            # Mention embedder
-            self.mention_embedder = RobertaModel.from_pretrained('roberta-base')
-            # Entity embedder
-            self.entity_embedder = RobertaModel.from_pretrained('roberta-base')
-        elif base_model_type == BaseModelType.DECLUTR_BASE.name:
-            # Mention embedder
-            self.mention_embedder = AutoModel.from_pretrained("johngiorgi/declutr-base")
-            # Entity embedder
-            self.entity_embedder = AutoModel.from_pretrained("johngiorgi/declutr-base")
-        else:
-            raise RuntimeError(f'Invalid base model type: {base_model_type}')
+        self.context_embedder = DistilBertModel.from_pretrained('distilbert-base-uncased')
+        # Entity embedder
+        self.entity_embedder = DistilBertModel.from_pretrained('distilbert-base-uncased')
 
         self.fc_me = nn.Linear(768, 128)
         self.fc_ee = nn.Linear(768, 128)
 
         # mention detection params
-        self.w_start = torch.nn.Parameter(torch.rand(768, 1) * 1e-6)
-        self.w_men = torch.nn.Parameter(torch.rand(768, 1) * 1e-6)
-        self.w_end = torch.nn.Parameter(torch.rand(768, 1) * 1e-6)
+        self.fc_mention = torch.nn.Linear(768, 3)  # mention scores for start, end, and middle.
 
     def get_entity_embeddings(self, entity_inputs):
         entity_inputs = {k: v.to(self.device) for k, v in entity_inputs.items()}
-
-        if self.base_model_type == BaseModelType.BERT_BASE.name:
-            ee = self.entity_embedder(**entity_inputs).last_hidden_state[:, 0]
-            ee = self.fc_ee(ee)
-        elif self.base_model_type == BaseModelType.ROBERTA_BASE.name:
-            sequence_output = self.entity_embedder(**entity_inputs)[0]
-            ee = torch.sum(
-                sequence_output * entity_inputs["attention_mask"].unsqueeze(-1), dim=1
-            ) / torch.clamp(torch.sum(entity_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
-            ee = self.fc_ee(ee)
-        elif self.base_model_type == BaseModelType.DECLUTR_BASE.name:
-            sequence_output = self.entity_embedder(**entity_inputs)[0]
-            ee = torch.sum(
-                sequence_output * entity_inputs["attention_mask"].unsqueeze(-1), dim=1
-            ) / torch.clamp(torch.sum(entity_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
-            ee = self.fc_ee(ee)
-        else:
-            raise RuntimeError(f'Invalid base model type: {self.base_model_type}')
-
+        ee = self.entity_embedder(**entity_inputs).last_hidden_state[:, 0]
+        ee = self.fc_ee(ee)
         return ee
 
     def get_mention_embeddings(self, mention_inputs):
         mention_inputs: Dict[str, Tensor] = {k: v.to(self.device) for k, v in mention_inputs.items()}
-
-        if self.base_model_type == BaseModelType.BERT_BASE.name:
-            me = self.mention_embedder(**mention_inputs).last_hidden_state[:, 0]
-            me = self.fc_me(me)
-        elif self.base_model_type == BaseModelType.ROBERTA_BASE.name:
-            sequence_output = self.mention_embedder(**mention_inputs)[0]
-            me = torch.sum(
-                sequence_output * mention_inputs["attention_mask"].unsqueeze(-1), dim=1
-            ) / torch.clamp(torch.sum(mention_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
-            me = self.fc_me(me)
-        elif self.base_model_type == BaseModelType.DECLUTR_BASE.name:
-            sequence_output = self.mention_embedder(**mention_inputs)[0]
-            me = torch.sum(
-                sequence_output * mention_inputs["attention_mask"].unsqueeze(-1), dim=1
-            ) / torch.clamp(torch.sum(mention_inputs["attention_mask"], dim=1, keepdims=True), min=1e-9)
-            me = self.fc_me(me)
-        else:
-            raise RuntimeError(f'Invalid base model type: {self.base_model_type}')
-
+        me = self.mention_embedder(**mention_inputs).last_hidden_state[:, 0]
+        me = self.fc_me(me)
         return me
 
-    def forward(self, mention_inputs, entity_inputs=None, **kwargs):
-        me = self.get_mention_embeddings(mention_inputs)
+    def forward(self, inputs, **kwargs):
+        context_mask = inputs['context_attention_mask']
 
-        if entity_inputs:
-            ee = self.get_entity_embeddings(entity_inputs)
-            return me, ee
+        context_embs = self.context_embedder(
+            input_ids=inputs['context_ids'],
+            attention_mask=context_mask
+        ).last_hidden_state  # (bs, seqlen, embsize)
 
-        return me
+        (bs, seqlen, embsize) = context_embs.shape
+
+        # (bs, seqlen, 3)
+        mention_bounds_logits = self.fc_mention(context_embs)
+        assert mention_bounds_logits.shape == torch.Size([bs, seqlen, 3])
+
+        # (bs, seqlen, 1); (bs, seqlen, 1); (bs, seqlen, 1)
+        starts, ends, middles = mention_bounds_logits.split(1, dim=-1)
+
+        # (bs, seqlen)
+        starts = starts.squeeze(-1)
+        ends = ends.squeeze(-1)
+        middles = middles.squeeze(-1)
+
+        # impossible to choose masked tokens as starts/ends of spans
+        starts[~context_mask] = -float("Inf")
+        ends[~context_mask] = -float("Inf")
+        middles[~context_mask] = -float("Inf")
+
+        #########################
+        # Compute mention scores.
+        # Mention score for span [i,j] is start_i + middle_i+1 + middle_i+2 + ... + middle_j-1 + end_j
+        #########################
+
+        # First sum start_i's and end_j's
+        # (bs, seqlen, seqlen)
+        mention_scores = starts.unsqueeze(2) + ends.unsqueeze(1)
+        assert mention_scores.shape == torch.Size([bs, seqlen, seqlen])
+
+        # (bs, seqlen, seqlen)
+        middle_sums = torch.zeros(mention_scores.size(), dtype=mention_scores.dtype).to(mention_scores.device)
+
+        # add ends
+        middle_cumsum = torch.zeros(bs, dtype=mention_scores.dtype).to(mention_scores.device)
+
+        for i in range(seqlen):
+            middle_cumsum += middles[:, i]
+            middle_sums[:, :, i] += middle_cumsum.unsqueeze(-1)
+
+        # subtract starts
+        middle_cumsum = torch.zeros(bs, dtype=mention_scores.dtype).to(mention_scores.device)
+
+        for i in range(seqlen - 1):
+            middle_cumsum += middles[:, i]
+            middle_sums[:, (i + 1), :] -= middle_cumsum.unsqueeze(-1)
+
+        # (bs, seqlen, seqlen)
+        mention_scores += middle_sums
+
+        # Get matrix of mention bounds
+        # (seqlen, seqlen, 2) -- tuples of [start_idx, end_idx]
+        mention_bounds = torch.stack([
+            torch.arange(seqlen).unsqueeze(-1).expand(seqlen, seqlen),
+            # start idxs
+            torch.arange(seqlen).unsqueeze(0).expand(seqlen, seqlen),
+            # end idxs
+        ], dim=-1).to(mention_scores.device)
+
+        # (seqlen, seqlen)
+        mention_sizes = mention_bounds[:, :, 1] - mention_bounds[:, :, 0] + 1  # (+1 as ends are inclusive)
+
+        # Remove invalids (startpos > endpos, endpos > seqlen) and renormalize
+
+        # (bs, seqlen, seqlen)
+        valid_mask = (mention_sizes.unsqueeze(0) > 0) & context_mask.unsqueeze(1)
+
+        # (bs, seqlen, seqlen)
+        mention_scores[~valid_mask] = -float("inf")  # invalids have logprob=-inf (p=0)
+
+        # (bs, seqlen * seqlen)
+        mention_scores = mention_scores.view(bs, -1)
+
+        # (bs, seqlen * seqlen, 2)
+        mention_bounds = mention_bounds.view(-1, 2)
+        mention_bounds = mention_bounds.unsqueeze(0).expand(bs, seqlen, 2)
+
+        return mention_scores, mention_bounds
 
     def training_step(self, batch, batch_idx):
         me, ee = self.forward(**batch)

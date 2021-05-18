@@ -8,21 +8,19 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
 
-from src.bi_encoder import BiEncoder
+from src.bi_encoder_e2e import BiEncoderE2E
 from src.config import DEVICE
-from src.enums import BaseModelType
 from src.tokenization import get_tokenizer
 from src.zeshel_dataset import ZeshelDataset
 
 
-def train_zeshel(work_dir: str,
+def train_zeshel_e2e(work_dir: str,
                  data_dir: str,
                  batch_size: int,
                  val_check_interval: int,
                  limit_train_batches: Optional[int] = None,
-                 max_epochs: int = 1,
-                 base_model_type: str = BaseModelType.BERT_BASE.name):
-    model = BiEncoder(base_model_type=base_model_type)
+                 max_epochs: int = 1):
+    model = BiEncoderE2E()
     model.train()
     model.to(DEVICE)
 
