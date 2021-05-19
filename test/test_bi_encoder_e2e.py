@@ -21,8 +21,11 @@ class TestBiEncoderE2E(TestCase):
     def test_len(self):
         loader = DataLoader(self.dataset, batch_size=2, collate_fn=zeshel_e2e_collate_fn)
         inputs = list(loader)[0]
-        out = self.model(inputs)
-        self.assertSequenceEqual(out.detach().numpy().shape, (2, 512, 3))
+        context_ids = inputs['context_ids']
+        context_mask = inputs['context_mask']
+        entity_ids = inputs['entity_ids']
+        self.assertSequenceEqual(context_ids.shape, (2, 512))
+        self.assertSequenceEqual(entity_ids.shape, (2, 1, 512))
 
     def test_train_bi_encoder(self):
         learning_rate = 1e-4

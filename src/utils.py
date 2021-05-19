@@ -39,3 +39,27 @@ def batch_reshape_mask_left(input_t, selected, pad_idx=0, left_align_mask=None):
     input_reshape[left_align_mask] = input_t[selected]
     # (bsz, max_num_selected, *); (bsz, max_num_selected)
     return input_reshape, left_align_mask
+
+
+def select_field_with_padding(data, key1, key2=None, pad_idx=-1):
+    max_len = 0
+    selected_list = []
+    padding_mask = []
+    for example in data:
+        if key2 is None:
+            selected_list.append(example[key1])
+            max_len = max(max_len, len(example[key1]))
+        else:
+            selected_list.append(example[key1][key2])
+            max_len = max(max_len, len(example[key1][key2]))
+    for i, entry in enumerate(selected_list):
+        # pad to max len
+        pad_list = [1 for _ in range(len(entry))] + [0 for _ in range(max_len - len(entry))]
+        selected_list[i] += [pad_idx for _ in range(max_len - len(entry))]
+        assert len(pad_list) == max_len
+        assert len(selected_list[i]) == max_len
+        padding_mask.append(pad_list)
+
+    if max_len == 0:
+        return None, None
+    return selected_list, padding_mask

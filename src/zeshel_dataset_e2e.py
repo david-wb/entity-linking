@@ -1,10 +1,12 @@
 import json
 import os
 from typing import Dict, Any
-
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
+from copy import deepcopy
+from src.utils import select_field_with_padding
 
 
 class ZeshelDatasetE2E(Dataset):
@@ -58,8 +60,8 @@ class ZeshelDatasetE2E(Dataset):
         assert len(input_ids) == self.tokenizer.model_max_length
 
         inputs = {
-            'ids': torch.LongTensor(input_ids),
-            'mask': torch.LongTensor(attention_mask),
+            'ids': input_ids,
+            'mask': attention_mask,
         }
         return inputs
 
@@ -77,8 +79,9 @@ class ZeshelDatasetE2E(Dataset):
             doc_tokens += tokens
 
         mention_bounds = []
-        mention_entity_ids = []
-        mention_entity_inputs = []
+        mention_entity_doc_ids = []
+        entity_ids = []
+        entity_mask = []
         for mention in doc['mentions']:
             start_word_i = mention['start_index']
             end_word_i = mention['end_index']
@@ -90,8 +93,10 @@ class ZeshelDatasetE2E(Dataset):
                 break
 
             mention_bounds.append((start_token_i + 1, end_token_i + 1))  # Add 1 for CLS token
-            mention_entity_ids.append(mention['label_document_id'])
-            mention_entity_inputs.append(self._get_entity_tokens(mention['label_doc']))
+            mention_entity_doc_ids.append(mention['label_document_id'])
+            entity_inputs = self._get_entity_tokens(mention['label_doc'])
+            entity_ids.append(entity_inputs['ids'])
+            entity_mask.append(entity_inputs['mask'])
 
         doc_tokens = [self.classification_token] + doc_tokens[:(self.tokenizer.model_max_length - 2)] + [self.sep_token]
 
@@ -116,10 +121,10 @@ class ZeshelDatasetE2E(Dataset):
 
         inputs = {
             'context_ids': input_ids,
-            'context_attention_mask': attention_mask,
+            'context_mask': attention_mask,
             'mention_bounds': mention_bounds,
-            'mention_entity_ids': mention_entity_ids,
-            'mention_entity_inputs': mention_entity_inputs,
+            'entity_ids': entity_ids,
+            'entity_mask': entity_mask,
             'starts': starts,
             'ends': ends,
             'middles': middles,
@@ -127,21 +132,78 @@ class ZeshelDatasetE2E(Dataset):
         return inputs
 
 
+def get_padded_entity_ids(batch):
+    embed_size = 0
+    max_num_entities = 0
+    result_entity_ids = []
+    result_entity_mask = []
+    result_mask = []
+
+    for sample in batch:
+        sample_entity_ids = sample['entity_ids']
+        num_entities = len(sample_entity_ids)
+        max_num_entities = max(max_num_entities, num_entities)
+        if num_entities > 0:
+            embed_size = len(sample_entity_ids[0])
+
+    if max_num_entities == 0:
+        return None, None, None
+
+    for sample in batch:
+        sample_entity_ids = deepcopy(sample['entity_ids'])
+        sample_entity_mask = deepcopy(sample['entity_mask'])
+        num_entities = len(sample_entity_ids)
+
+        while len(sample_entity_ids) < max_num_entities:
+            sample_entity_ids.append([0] * embed_size)
+            sample_entity_mask.append([0] * embed_size)
+
+        result_entity_ids.append(sample_entity_ids)
+        result_entity_mask.append(sample_entity_mask)
+        result_mask.append([1] * num_entities + [0] * (max_num_entities - num_entities))
+
+    return result_entity_ids, result_entity_mask, result_mask
+
+
 def zeshel_e2e_collate_fn(batch):
     context_ids = torch.LongTensor([x['context_ids'] for x in batch])
-    context_attention_mask = torch.LongTensor([x['context_attention_mask'] for x in batch])
+    context_mask = torch.LongTensor([x['context_mask'] for x in batch])
+
+    (
+        entity_ids,  # (bs, max_num_entities, embed_dim)
+        entity_mask,  # (bs, max_num_entities, embed_dim)
+        all_entities_mask,  # (bs, max_num_entities)
+    ) = get_padded_entity_ids(batch)
+
+    if entity_ids is not None:
+        entity_ids = torch.LongTensor(entity_ids)
+        entity_mask = torch.LongTensor(entity_mask)
+        all_entities_mask = torch.LongTensor(all_entities_mask)
+
     mention_starts = torch.LongTensor([x['starts'] for x in batch])
     mention_ends = torch.LongTensor([x['ends'] for x in batch])
     mention_middles = torch.LongTensor([x['middles'] for x in batch])
-    mention_bounds = [x['mention_bounds'] for x in batch]
-    mention_entity_inputs = [x['mention_entity_inputs'] for x in batch]
+
+    mention_bounds, mention_bounds_mask = select_field_with_padding(batch, 'mention_bounds', pad_idx=[0, 0])
+
+    if mention_bounds is not None:
+        mention_bounds = torch.LongTensor(mention_bounds)
+        mention_bounds_mask = torch.LongTensor(mention_bounds_mask)
+
+    if entity_ids is not None:
+        assert entity_ids.shape == entity_mask.shape
+        assert mention_bounds.shape[:2] == entity_ids.shape[:2]
+        assert torch.all(mention_bounds_mask.eq(all_entities_mask))
 
     return {
         'context_ids': context_ids,
-        'context_attention_mask': context_attention_mask,
+        'context_mask': context_mask,
+        'entity_ids': entity_ids,
+        'entity_mask': entity_mask,
+        'all_entities_mask': all_entities_mask,
         'mention_starts': mention_starts,
         'mention_ends': mention_ends,
         'mention_middles': mention_middles,
         'mention_bounds': mention_bounds,
-        'mention_entity_inputs': mention_entity_inputs
+        'mention_bounds_mask': mention_bounds_mask,
     }
