@@ -10,7 +10,7 @@ from src.span_utils import batched_span_select
 from src.utils import batch_reshape_mask_left
 
 
-class BiEncoderE2E(pl.LightningModule):
+class BiEncoderE2E(pl.LightningModule, ABC):
     def __init__(self):
         super(BiEncoderE2E, self).__init__()
 
@@ -36,17 +36,28 @@ class BiEncoderE2E(pl.LightningModule):
                 context_mask,
                 entity_ids,
                 entity_mask,
-                true_mention_bounds=None,
-                true_mention_bounds_mask=None,
-                **kwargs):
+                all_entities_mask,
+                mention_starts,
+                mention_ends,
+                mention_middles,
+                mention_bounds,
+                mention_bounds_mask):
 
         context_outs = self.forward_context(context_ids=context_ids,
                                             context_mask=context_mask,
-                                            true_mention_bounds=true_mention_bounds,
-                                            true_mention_bounds_mask=true_mention_bounds_mask)
+                                            true_mention_bounds=mention_bounds,
+                                            true_mention_bounds_mask=mention_bounds_mask)
 
-        # (bs, embed_dim)
-        entity_embs = self.get_entity_embeddings(entity_ids, entity_mask)
+        bs = entity_ids.shape[0]
+        max_num_entities = entity_ids.shape[1]
+
+        # (bs, max_num_entities, embed_dim)
+        entity_embs = self.get_entity_embeddings(
+            input_ids=entity_ids.view(-1, 512),
+            attention_mask=entity_mask.view(-1, 512)
+        )
+
+        entity_embs = entity_embs.view(bs, max_num_entities, -1)
 
         return context_outs, entity_embs
 
@@ -56,13 +67,15 @@ class BiEncoderE2E(pl.LightningModule):
             context_mask,
             true_mention_bounds=None,
             true_mention_bounds_mask=None,
-            num_cand_mentions=50,
+            max_mentions=50,
             topk_threshold=-4.5
     ):
         """
         If true_mention_bounds is set, returns mention embeddings of passed-in mention bounds
         Otherwise, uses top-scoring mentions
         """
+
+        (bs, seqlen) = context_ids.shape
 
         # (bs, seqlen, embed_size)
         context_embs = self.get_context_embeddings(context_ids, context_mask)
@@ -75,7 +88,7 @@ class BiEncoderE2E(pl.LightningModule):
         if true_mention_bounds is None:
             (
                 top_mention_scores, top_mention_bounds, top_mention_mask, all_mention_mask,
-            ) = self.prune_predicted_mentions(mention_scores, mention_bounds, num_cand_mentions, topk_threshold)
+            ) = self.prune_predicted_mentions(mention_scores, mention_bounds, max_mentions, topk_threshold)
             extra_rets['mention_scores'] = top_mention_scores.view(-1)
             extra_rets['all_mention_mask'] = all_mention_mask
 
@@ -87,11 +100,9 @@ class BiEncoderE2E(pl.LightningModule):
         assert top_mention_bounds is not None
         assert top_mention_mask is not None
 
-        # (bs, num_pred_mentions OR num_true_mentions, embed_size)
-        mention_embs = self.get_men(
-            context_embs, top_mention_bounds,
-        )
-        # for merging dataparallel, only 1st dimension can differ...
+        # (bs, max_num_mentions, embed_size)
+        mention_embs = self.mention_encoder_head(context_embs, top_mention_bounds)
+
         return {
             "mention_embs": mention_embs,
             "mention_scores": top_mention_scores,
@@ -287,7 +298,7 @@ class MentionDetectorHead(pl.LightningModule):
         # Remove invalids (startpos > endpos, endpos > seqlen) and renormalize
 
         # (bs, seqlen, seqlen)
-        valid_mask = (mention_sizes.unsqueeze(0) > 0) & context_mask.unsqueeze(1)
+        valid_mask = (mention_sizes.unsqueeze(0) > 0) & (context_mask.unsqueeze(1) > 0)
 
         # (bs, seqlen, seqlen)
         mention_scores[~valid_mask] = -float("inf")  # invalids have logprob=-inf (p=0)
